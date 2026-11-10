@@ -1,0 +1,11 @@
+{
+  "name": "golge-derinlikleri",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "build": "node build.mjs",
+    "serve": "node build.mjs && npx --yes http-server dist -p 8080 -c-1"
+  },
+  "dependencies": { "three": "0.170.0" },
+  "devDependencies": { "esbuild": "0.24.0", "@fontsource/cinzel": "5.1.0", "@fontsource/inter": "5.1.0" }
+}

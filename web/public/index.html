@@ -1,0 +1,147 @@
+<!doctype html>
+<html lang="tr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+<meta name="theme-color" content="#050507">
+<title>Gölge Derinlikleri</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<canvas id="c"></canvas>
+<div id="dmg"></div>
+
+<div id="loading">
+  <div class="ltitle">GÖLGE<br><span>DERİNLİKLERİ</span></div>
+  <div class="lbar"><i></i></div>
+  <div id="loadMsg">Zindan dövülüyor...</div>
+</div>
+
+<!-- MAIN MENU -->
+<div id="menu" class="screen hidden">
+  <div class="menuInner">
+    <div class="logo">
+      <div class="logoTop">GÖLGE</div>
+      <div class="logoBot">DERİNLİKLERİ</div>
+      <div class="logoSub">İzometrik Roguelike Keşif RPG</div>
+    </div>
+    <div class="mbtns">
+      <button id="btnPlay" class="mbtn primary">⚔ MACERAYA BAŞLA</button>
+      <button id="btnHow" class="mbtn">📜 NASIL OYNANIR</button>
+      <button id="btnSettings" class="mbtn">⚙ AYARLAR</button>
+    </div>
+    <div id="menuStats" class="mstats"></div>
+  </div>
+  <div class="ver">v1.0</div>
+</div>
+
+<!-- SETTINGS -->
+<div id="settings" class="screen panel hidden">
+  <div class="card">
+    <h2>Ayarlar</h2>
+    <div class="row col">
+      <label>Grafik Kalitesi</label>
+      <div class="seg">
+        <button data-q="auto">Otomatik</button>
+        <button data-q="low">Düşük</button>
+        <button data-q="medium">Orta</button>
+        <button data-q="high">Yüksek</button>
+        <button data-q="ultra">Ultra RT</button>
+      </div>
+      <small>Ultra RT: Gerçek zamanlı yumuşak gölgeler, ortam kapatma (GTAO), bloom, PBR yansımalar. Güçlü cihazlar için.</small>
+    </div>
+    <div class="row"><label>Müzik</label><input id="volMusic" type="range" min="0" max="1" step="0.05"></div>
+    <div class="row"><label>Efektler</label><input id="volSfx" type="range" min="0" max="1" step="0.05"></div>
+    <div class="row"><label>Ekran sarsıntısı</label><input id="chkShake" type="checkbox" class="tog"></div>
+    <div class="row"><label>FPS göstergesi</label><input id="chkFps" type="checkbox" class="tog"></div>
+    <button id="btnSetBack" class="mbtn">← GERİ</button>
+  </div>
+</div>
+
+<!-- HOW TO -->
+<div id="howto" class="screen panel hidden">
+  <div class="card">
+    <h2>Nasıl Oynanır</h2>
+    <ul class="how">
+      <li><b>Sol taraf:</b> Ekranın soluna dokunup sürükle → hareket joystick'i.</li>
+      <li><b>⚔ Saldırı:</b> Basılı tut, en yakın düşmana otomatik nişan alır.</li>
+      <li><b>💨 Atılma:</b> Kısa süre hasar almazsın — saldırılardan kaç!</li>
+      <li><b>🔥 Kor Novası:</b> Etraftaki herkese alan hasarı, mermileri siler.</li>
+      <li><b>⚗ İksir:</b> Canının %40'ını yeniler.</li>
+      <li>Kırmızı halkalar ve titreyen düşmanlar <b>saldırı uyarısıdır</b>.</li>
+      <li>Seviye atladıkça <b>3 güçten birini seç</b>. Sandıkları aç, altın topla.</li>
+      <li>Her biyomun 2. katında bir <b>BOSS</b> portalı korur. 5 biyom, 10 kat.</li>
+      <li>Öldüğünde her şey sıfırlanır. Bu bir roguelike!</li>
+    </ul>
+    <button id="btnHowBack" class="mbtn">← GERİ</button>
+  </div>
+</div>
+
+<!-- HUD -->
+<div id="hud" class="hidden">
+  <div class="topL">
+    <div class="lvlRow"><div class="lvlBadge"><span id="lvl">1</span></div>
+      <div class="bars">
+        <div id="hpBar" class="bar hp"><i id="hpFill"></i><span id="hpText"></span></div>
+        <div class="bar xp"><i id="xpFill"></i></div>
+      </div>
+    </div>
+    <div class="info"><span class="g">◆ <b id="gold">0</b></span><span id="floorLbl"></span></div>
+  </div>
+  <canvas id="minimap" width="150" height="150"></canvas>
+  <button id="btnPause" class="pauseBtn">❚❚</button>
+  <div id="stickZone"></div>
+  <div id="stick"><div id="knob"></div></div>
+  <div class="actions">
+    <button id="bPotion" class="ab small"><span>⚗</span><em id="potCount">2</em></button>
+    <button id="bNova" class="ab mid"><span>🔥</span></button>
+    <button id="bDash" class="ab mid"><span>💨</span></button>
+    <button id="bAttack" class="ab big"><span>⚔</span></button>
+  </div>
+  <div id="boss" class="hidden"><div id="bossName"></div><div class="bbar"><i id="bossFill"></i></div></div>
+</div>
+
+<div id="banner"><div id="bTitle"></div><div id="bName"></div><div id="bSub"></div></div>
+<div id="toast"></div>
+<div id="fps" class="hidden"></div>
+
+<!-- PAUSE -->
+<div id="pause" class="screen panel hidden">
+  <div class="card narrow">
+    <h2>Duraklatıldı</h2>
+    <button id="btnResume" class="mbtn primary">▶ DEVAM ET</button>
+    <button id="btnPauseSettings" class="mbtn">⚙ AYARLAR</button>
+    <button id="btnQuit" class="mbtn danger">⌂ ANA MENÜ</button>
+  </div>
+</div>
+
+<!-- PERKS -->
+<div id="perks" class="screen panel hidden">
+  <div class="perkWrap"><h2 id="perkTitle"></h2><div id="perkList"></div></div>
+</div>
+
+<!-- GAME OVER -->
+<div id="over" class="screen panel hidden">
+  <div class="card">
+    <h2 class="dead">ÖLDÜN</h2>
+    <div id="overStats"></div>
+    <button id="btnRetry" class="mbtn primary">↻ TEKRAR DENE</button>
+    <button id="btnOverMenu" class="mbtn">⌂ ANA MENÜ</button>
+  </div>
+</div>
+
+<!-- VICTORY -->
+<div id="victory" class="screen panel hidden">
+  <div class="card">
+    <h2 class="win">ZAFER!</h2>
+    <p class="center">Boşluğun Gözcüsü düştü. Derinlikler artık senin.</p>
+    <div id="vicStats"></div>
+    <button id="btnEndless" class="mbtn primary">∞ SONSUZ MODA DEVAM</button>
+    <button id="btnVicMenu" class="mbtn">⌂ ANA MENÜ</button>
+  </div>
+</div>
+
+<div id="fade"></div>
+<script src="game.js"></script>
+</body>
+</html>
