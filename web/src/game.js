@@ -12,6 +12,7 @@ import { biomeForFloor, isBossFloor, BIOMES, TOTAL_FLOORS } from './biomes.js';
 import { floorTextures, wallTextures, glowTexture, blobTexture } from './textures.js';
 import { makePlayer, makeEnemyModel, makeProp, makeTorch, makeChest, makePortal, makePickup, M } from './models.js';
 import { Particles } from './particles.js';
+import { Debris } from './debris.js';
 import { sfx, playMusic, playAmbience } from './audio.js';
 import { settings, QUALITY, meta, saveMeta } from './settings.js';
 
@@ -21,15 +22,15 @@ const SCREEN_RIGHT = new THREE.Vector2(1, -1).normalize(); // world xz for scree
 const SCREEN_UP = new THREE.Vector2(-1, -1).normalize();   // world xz for screen -y
 
 const ENEMY_DEFS = {
-  skeleton: { hp: 32, dmg: 10, speed: 3.3, r: 0.45, ai: 'melee', range: 1.7, xp: 8, color: 0xd8ccb0, death: 'bones' },
-  archer:   { hp: 22, dmg: 8, speed: 2.9, r: 0.45, ai: 'ranged', cd: 1.9, pspeed: 13, pcolor: 0x60ff90, xp: 10, color: 0x60ff90, death: 'bones' },
-  spider:   { hp: 18, dmg: 7, speed: 5.2, r: 0.5, ai: 'lunger', range: 1.4, xp: 8, color: 0x60ff30, death: 'splat' },
-  slime:    { hp: 40, dmg: 9, speed: 2.3, r: 0.6, ai: 'melee', range: 1.5, xp: 10, color: 0x7aff30, split: 'slimeSmall', death: 'splat' },
-  slimeSmall: { hp: 14, dmg: 5, speed: 3.4, r: 0.35, ai: 'melee', range: 1.2, xp: 3, color: 0x7aff30, death: 'splat' },
-  imp:      { hp: 26, dmg: 10, speed: 3.6, r: 0.45, ai: 'ranged', cd: 2.2, pspeed: 10, pcolor: 0xff6010, xp: 11, color: 0xff6010, death: 'death', fly: true },
-  golem:    { hp: 95, dmg: 22, speed: 1.9, r: 0.85, ai: 'charger', range: 2.0, xp: 22, color: 0xff6020, death: 'explode' },
-  wraith:   { hp: 34, dmg: 11, speed: 3.4, r: 0.5, ai: 'blinker', cd: 2.0, pspeed: 11, pcolor: 0x70d8ff, xp: 13, color: 0x70d8ff, death: 'frost', fly: true },
-  voideye:  { hp: 46, dmg: 9, speed: 2.6, r: 0.6, ai: 'spread', cd: 2.4, pspeed: 9, pcolor: 0xc050ff, xp: 15, color: 0xc050ff, death: 'death', fly: true },
+  skeleton: { mass: 1, hp: 32, dmg: 10, speed: 3.3, r: 0.45, ai: 'melee', range: 1.7, xp: 8, color: 0xd8ccb0, death: 'bones' },
+  archer:   { mass: 0.9, hp: 22, dmg: 8, speed: 2.9, r: 0.45, ai: 'ranged', cd: 1.9, pspeed: 13, pcolor: 0x60ff90, xp: 10, color: 0x60ff90, death: 'bones' },
+  spider:   { mass: 0.7, hp: 18, dmg: 7, speed: 5.2, r: 0.5, ai: 'lunger', range: 1.4, xp: 8, color: 0x60ff30, death: 'splat' },
+  slime:    { mass: 1.3, hp: 40, dmg: 9, speed: 2.3, r: 0.6, ai: 'melee', range: 1.5, xp: 10, color: 0x7aff30, split: 'slimeSmall', death: 'splat' },
+  slimeSmall: { mass: 0.5, hp: 14, dmg: 5, speed: 3.4, r: 0.35, ai: 'melee', range: 1.2, xp: 3, color: 0x7aff30, death: 'splat' },
+  imp:      { mass: 0.8, hp: 26, dmg: 10, speed: 3.6, r: 0.45, ai: 'ranged', cd: 2.2, pspeed: 10, pcolor: 0xff6010, xp: 11, color: 0xff6010, death: 'death', fly: true },
+  golem:    { mass: 4, hp: 95, dmg: 22, speed: 1.9, r: 0.85, ai: 'charger', range: 2.0, xp: 22, color: 0xff6020, death: 'explode' },
+  wraith:   { mass: 0.8, hp: 34, dmg: 11, speed: 3.4, r: 0.5, ai: 'blinker', cd: 2.0, pspeed: 11, pcolor: 0x70d8ff, xp: 13, color: 0x70d8ff, death: 'frost', fly: true },
+  voideye:  { mass: 1.5, hp: 46, dmg: 9, speed: 2.6, r: 0.6, ai: 'spread', cd: 2.4, pspeed: 9, pcolor: 0xc050ff, xp: 15, color: 0xc050ff, death: 'death', fly: true },
 };
 const BOSS_DEFS = {
   lich:        { name: 'Kemik Lordu Valkar', hp: 650, dmg: 16, speed: 2.6, r: 1.1, scale: 2.0, pcolor: 0x50a8ff },
@@ -57,6 +58,29 @@ export const PERKS = [
   { id: 'magnet', name: 'Açgözlülük', desc: '+40% altın, mıknatıs menzili x2', apply: (p) => { p.goldMult += 0.4; p.magnet *= 2; } },
 ];
 
+const DEBRIS_COL = { skeleton: 0xd8ccb0, archer: 0xb8b0a0, spider: 0x1a1612, golem: 0x4a3c34, lich: 0xe8e0c8, magma: 0x4a3c34, broodmother: 0x1a1612, imp: 0x8a1a0a, voideye: 0x3a1a40, overseer: 0x3a1a40 };
+const BREAKABLE = {
+  urn: { color: 0x7a5030, gold: 0.7 }, bones: null, mushroom: { color: 0x40c0a0, gold: 0.25 }, stump: { color: 0x5a3a22, gold: 0.2 },
+  coffin: { color: 0x4a2e1c, gold: 0.6 }, crystal: { color: 0x60d0ff, gold: 0.35 }, crystalRed: { color: 0xff4020, gold: 0.35 }, crystalPurple: { color: 0xb050ff, gold: 0.35 },
+};
+
+function mergeGeos(list) {
+  const P = [], N = [], I = [];
+  let off = 0;
+  for (const g of list) {
+    const p = g.attributes.position.array, n = g.attributes.normal.array, idx = g.index ? g.index.array : null;
+    for (let i = 0; i < p.length; i++) { P.push(p[i]); N.push(n[i]); }
+    if (idx) for (let i = 0; i < idx.length; i++) I.push(idx[i] + off); else for (let i = 0; i < p.length / 3; i++) I.push(i + off);
+    off += p.length / 3; g.dispose();
+  }
+  const out = new THREE.BufferGeometry();
+  out.setAttribute('position', new THREE.Float32BufferAttribute(P, 3));
+  out.setAttribute('normal', new THREE.Float32BufferAttribute(N, 3));
+  out.setIndex(I);
+  return out;
+}
+
+const WHITE = new THREE.Color(0xffffff);
 const tmpV = new THREE.Vector3();
 const tmpV2 = new THREE.Vector3();
 const rnd = (a, b) => a + Math.random() * (b - a);
@@ -91,6 +115,7 @@ export class Game {
     this.glowTex = glowTexture();
     this.blobTex = blobTexture();
     this.particles = new Particles(this.scene, 2500, this.glowTex);
+    this.debris = new Debris(this.scene, 180);
     this.world = new THREE.Group(); this.scene.add(this.world);
     this.texCache = {};
     this.time = 0;
@@ -113,6 +138,8 @@ export class Game {
     this.Q = QUALITY[q];
     const r = this.renderer;
     r.shadowMap.enabled = this.Q.shadows;
+    r.shadowMap.autoUpdate = false;
+    this.shadowEvery = this.qName === 'medium' ? 2 : 1;
     this.key.castShadow = this.Q.shadows;
     this.key.shadow.mapSize.set(this.Q.shadowSize, this.Q.shadowSize);
     if (this.key.shadow.map) { this.key.shadow.map.dispose(); this.key.shadow.map = null; }
@@ -196,8 +223,8 @@ export class Game {
     const aniso = Math.min(8, this.renderer.capabilities.getMaxAnisotropy());
     const ft = floorTextures(biome, this.Q.texSize, aniso);
     const wt = wallTextures(biome, this.Q.texSize, aniso);
-    const floorMat = new THREE.MeshStandardMaterial({ ...ft, metalness: biome.id === 'ice' || biome.id === 'void' ? 0.15 : 0.0, roughness: 1, normalScale: new THREE.Vector2(1.2, 1.2), emissive: ft.emissiveMap ? 0xffffff : 0x000000, emissiveIntensity: ft.emissiveMap ? 1.4 : 0 });
-    const wallMat = new THREE.MeshStandardMaterial({ ...wt, metalness: 0, roughness: 1, normalScale: new THREE.Vector2(1.4, 1.4) });
+    const floorMat = new THREE.MeshStandardMaterial({ ...ft, vertexColors: true, metalness: biome.id === 'ice' || biome.id === 'void' ? 0.15 : 0.0, roughness: 1, normalScale: new THREE.Vector2(1.2, 1.2), emissive: ft.emissiveMap ? 0xffffff : 0x000000, emissiveIntensity: ft.emissiveMap ? 1.4 : 0 });
+    const wallMat = new THREE.MeshStandardMaterial({ ...wt, vertexColors: true, metalness: 0, roughness: 1, normalScale: new THREE.Vector2(1.4, 1.4) });
     const cut = this.cutaway;
     wallMat.onBeforeCompile = (s) => {
       s.uniforms.uPlayer = cut.uPlayer; s.uniforms.uCamDir = cut.uCamDir;
@@ -211,7 +238,8 @@ export class Game {
             if (fade > dither * 0.98 + 0.01) discard; }`);
     };
     wallMat.customProgramCacheKey = () => 'cutawayWall';
-    const capMat = new THREE.MeshStandardMaterial({ color: 0x0a0a0c, roughness: 1 });
+    const capMat = new THREE.MeshStandardMaterial({ map: wt.map, normalMap: wt.normalMap, roughnessMap: wt.roughnessMap, color: 0x565656, roughness: 1 });
+    const rubbleMat = new THREE.MeshStandardMaterial({ color: new THREE.Color(biome.wall.b[0] / 255, biome.wall.b[1] / 255, biome.wall.b[2] / 255).multiplyScalar(0.8), roughness: 0.95, flatShading: true });
     capMat.onBeforeCompile = wallMat.onBeforeCompile; capMat.customProgramCacheKey = () => 'cutawayCap';
     const L = biome.liquid;
     const liquidMat = new THREE.MeshStandardMaterial({ color: L.color, emissive: L.emissive, emissiveIntensity: L.ei, roughness: L.rough, metalness: L.metal, transparent: !L.lava, opacity: L.lava ? 1 : 0.88 });
@@ -232,18 +260,23 @@ export class Game {
     };
     liquidMat.customProgramCacheKey = () => 'liquid' + (L.lava ? 1 : 0);
     const pitMat = new THREE.MeshStandardMaterial({ color: 0x050505, roughness: 1, emissive: L.emissive, emissiveIntensity: L.lava ? 0.6 : 0.1 });
-    const res = { floorMat, wallMat, capMat, liquidMat, pitMat };
+    const res = { floorMat, wallMat, capMat, liquidMat, pitMat, rubbleMat };
     this.texCache[biome.id + this.Q.texSize] = res;
     return res;
   }
 
   // ----------------------------------------------------------- build world
   clearWorld() {
-    this.world.traverse((o) => { if (o.isMesh && o.geometry && o.userData.ownGeo) o.geometry.dispose(); });
+    this.world.traverse((o) => { if (o.isInstancedMesh) o.dispose(); else if (o.isMesh && o.geometry && o.userData.ownGeo) o.geometry.dispose(); });
+    if (this.enemies) for (const e of this.enemies) this.freeEnemy(e);
     this.scene.remove(this.world);
     this.world = new THREE.Group(); this.scene.add(this.world);
     this.particles.clear();
-    this.enemies = []; this.projectiles = []; this.pickups = []; this.chests = []; this.torches = []; this.glows = []; this.obstacles = []; this.decals = [];
+    this.enemies = []; this.projectiles = []; this.pickups = []; this.chests = []; this.torches = []; this.glows = []; this.obstacles = []; this.decals = []; this.traps = []; this.shrine = null;
+    if (this.dying) for (const dy of this.dying) if (dy.mats) for (const mt of dy.mats) mt.dispose();
+    this.dying = [];
+    if (this.slashes) for (const sl of this.slashes) { sl.t = 1; this.scene.remove(sl.g); }
+    if (this.debris) this.debris.clear();
     this.boss = null; this.bossSpawned = false;
   }
 
@@ -252,8 +285,9 @@ export class Game {
     this.floor = floor;
     const biome = biomeForFloor(floor);
     this.biome = biome;
+    this.grip = biome.grip || 14;
     const seed = (Math.random() * 1e9) | 0;
-    const d = new Dungeon(seed, floor);
+    const d = new Dungeon(seed, floor, biome.style);
     this.dungeon = d;
     this.flow = new Int16Array(d.w * d.h);
     this.flowTimer = 0;
@@ -265,70 +299,99 @@ export class Game {
     this.key.color.setHex(biome.key); this.key.intensity = biome.keyI;
     this.scene.background.setHex(biome.fog);
 
-    // ---- merged floor geometry (world-space UVs)
-    const fp = [], fn = [], fu = [], fi = [];
-    const lp = [], ln = [], lu = [], li = [];
-    const pp = [], pn = [], pu = [], pi = [];
-    const UVS = 4;
-    const quad = (P, N, U, I, a, b, c, dd, n) => {
-      const base = P.length / 3;
-      [a, b, c, dd].forEach((v) => { P.push(v[0], v[1], v[2]); N.push(n[0], n[1], n[2]); });
-      U.push(...uvFor(a, n), ...uvFor(b, n), ...uvFor(c, n), ...uvFor(dd, n));
-      I.push(base, base + 1, base + 2, base, base + 2, base + 3);
+    // ---- chunked, merged geometry with baked ambient occlusion in vertex colours.
+    // Chunks let the renderer frustum-cull most of the dungeon (main pass and shadow pass).
+    const CH = 10, UVS = 4, LY = -0.3;
+    const rough = biome.style === 'caves' || biome.style === 'organic';
+    const hash = (x, y) => { let h = (x * 374761393 + y * 668265263 + seed) | 0; h = (h ^ (h >>> 13)) * 1274126177; return ((h ^ (h >>> 16)) >>> 0) / 4294967296; };
+    const wallH = (x, y) => rough ? WALL_H - 0.5 + Math.floor(hash(x, y) * 4) * 0.35 : WALL_H;
+    const sets = {};
+    const bucket = (kind, x, y) => {
+      const k = kind + ':' + Math.floor(x / CH) + ':' + Math.floor(y / CH);
+      return sets[k] || (sets[k] = { kind, P: [], N: [], U: [], C: [], I: [] });
     };
     const uvFor = (v, n) => n[1] !== 0 ? [v[0] / UVS, -v[2] / UVS] : (n[0] !== 0 ? [v[2] / UVS, v[1] / WALL_H] : [v[0] / UVS, v[1] / WALL_H]);
-    const LY = -0.3;
+    const quad = (b, a, bb, c, dd, n, cols) => {
+      const base = b.P.length / 3;
+      const vs = [a, bb, c, dd];
+      for (let i = 0; i < 4; i++) {
+        const v = vs[i], col = cols ? cols[i] : 1;
+        b.P.push(v[0], v[1], v[2]); b.N.push(n[0], n[1], n[2]); b.C.push(col, col, col);
+        const uv = uvFor(v, n); b.U.push(uv[0], uv[1]);
+      }
+      // flip the diagonal when it gives smoother AO interpolation
+      if (cols && cols[0] + cols[2] < cols[1] + cols[3]) b.I.push(base, base + 1, base + 3, base + 1, base + 2, base + 3);
+      else b.I.push(base, base + 1, base + 2, base, base + 2, base + 3);
+    };
+    // AO at a grid corner: darker the more wall cells touch it
+    const cornerAO = (gx, gy) => {
+      let w = 0;
+      if (d.get(gx - 1, gy - 1) === WALL) w++;
+      if (d.get(gx, gy - 1) === WALL) w++;
+      if (d.get(gx - 1, gy) === WALL) w++;
+      if (d.get(gx, gy) === WALL) w++;
+      return w === 0 ? 1 : w === 1 ? 0.62 : w === 2 ? 0.48 : 0.36;
+    };
     for (let y = 0; y < d.h; y++) for (let x = 0; x < d.w; x++) {
       const v = d.get(x, y);
       const x0 = x * TILE, x1 = x0 + TILE, z0 = y * TILE, z1 = z0 + TILE;
-      if (v === FLOOR) quad(fp, fn, fu, fi, [x0, 0, z1], [x1, 0, z1], [x1, 0, z0], [x0, 0, z0], [0, 1, 0]);
-      else if (v === LIQUID) {
-        quad(lp, ln, lu, li, [x0, LY, z1], [x1, LY, z1], [x1, LY, z0], [x0, LY, z0], [0, 1, 0]);
-        // pit side faces where neighbour is floor
-        if (d.get(x - 1, y) === FLOOR) quad(pp, pn, pu, pi, [x0, LY, z1], [x0, LY, z0], [x0, 0, z0], [x0, 0, z1], [1, 0, 0]);
-        if (d.get(x + 1, y) === FLOOR) quad(pp, pn, pu, pi, [x1, LY, z0], [x1, LY, z1], [x1, 0, z1], [x1, 0, z0], [-1, 0, 0]);
-        if (d.get(x, y - 1) === FLOOR) quad(pp, pn, pu, pi, [x1, LY, z0], [x0, LY, z0], [x0, 0, z0], [x1, 0, z0], [0, 0, 1]);
-        if (d.get(x, y + 1) === FLOOR) quad(pp, pn, pu, pi, [x0, LY, z1], [x1, LY, z1], [x1, 0, z1], [x0, 0, z1], [0, 0, -1]);
+      if (v === FLOOR) {
+        quad(bucket('floor', x, y), [x0, 0, z1], [x1, 0, z1], [x1, 0, z0], [x0, 0, z0], [0, 1, 0],
+          [cornerAO(x, y + 1), cornerAO(x + 1, y + 1), cornerAO(x + 1, y), cornerAO(x, y)]);
+      } else if (v === LIQUID) {
+        quad(bucket('liquid', x, y), [x0, LY, z1], [x1, LY, z1], [x1, LY, z0], [x0, LY, z0], [0, 1, 0]);
+        const pb = bucket('pit', x, y);
+        if (d.get(x - 1, y) === FLOOR) quad(pb, [x0, LY, z1], [x0, LY, z0], [x0, 0, z0], [x0, 0, z1], [1, 0, 0]);
+        if (d.get(x + 1, y) === FLOOR) quad(pb, [x1, LY, z0], [x1, LY, z1], [x1, 0, z1], [x1, 0, z0], [-1, 0, 0]);
+        if (d.get(x, y - 1) === FLOOR) quad(pb, [x1, LY, z0], [x0, LY, z0], [x0, 0, z0], [x1, 0, z0], [0, 0, 1]);
+        if (d.get(x, y + 1) === FLOOR) quad(pb, [x0, LY, z1], [x1, LY, z1], [x1, 0, z1], [x0, 0, z1], [0, 0, -1]);
+      } else if (d.isWallVisible(x, y)) {
+        const H = wallH(x, y), wb = bucket('wall', x, y);
+        quad(bucket('cap', x, y), [x0, H, z1], [x1, H, z1], [x1, H, z0], [x0, H, z0], [0, 1, 0]);
+        // each side: full face next to open cells, partial face above a lower neighbouring wall
+        const side = (nx, ny, a, b2, n) => {
+          const nv = d.get(nx, ny);
+          let y0;
+          if (nv !== WALL) y0 = -0.31;
+          else if (d.isWallVisible(nx, ny)) y0 = wallH(nx, ny);
+          else y0 = 0;
+          if (y0 >= H - 0.001) return;
+          const dark = nv !== WALL ? 0.42 : 1;
+          quad(wb, [a[0], y0, a[1]], [b2[0], y0, b2[1]], [b2[0], H, b2[1]], [a[0], H, a[1]], n, [dark, dark, 1, 1]);
+        };
+        side(x + 1, y, [x1, z1], [x1, z0], [1, 0, 0]);
+        side(x - 1, y, [x0, z0], [x0, z1], [-1, 0, 0]);
+        side(x, y + 1, [x0, z1], [x1, z1], [0, 0, 1]);
+        side(x, y - 1, [x1, z0], [x0, z0], [0, 0, -1]);
       }
     }
-    const mkMesh = (P, N, U, I, mat, cast, recv) => {
+    const matFor = { floor: mats.floorMat, liquid: mats.liquidMat, pit: mats.pitMat, wall: mats.wallMat, cap: mats.capMat };
+    for (const k in sets) {
+      const b = sets[k];
       const g = new THREE.BufferGeometry();
-      g.setAttribute('position', new THREE.Float32BufferAttribute(P, 3));
-      g.setAttribute('normal', new THREE.Float32BufferAttribute(N, 3));
-      g.setAttribute('uv', new THREE.Float32BufferAttribute(U, 2));
-      g.setIndex(I);
-      const m = new THREE.Mesh(g, mat); m.castShadow = cast; m.receiveShadow = recv; m.userData.ownGeo = true;
-      this.world.add(m); return m;
-    };
-    mkMesh(fp, fn, fu, fi, mats.floorMat, false, true);
-    if (lp.length) { mkMesh(lp, ln, lu, li, mats.liquidMat, false, true).renderOrder = 1; mkMesh(pp, pn, pu, pi, mats.pitMat, false, true); }
-
-    // ---- merged walls (exposed faces only) + caps
-    const wp = [], wn = [], wu = [], wi = [];
-    const cp = [], cn = [], cu = [], ci = [];
-    for (let y = 0; y < d.h; y++) for (let x = 0; x < d.w; x++) {
-      if (!d.isWallVisible(x, y)) continue;
-      const x0 = x * TILE, x1 = x0 + TILE, z0 = y * TILE, z1 = z0 + TILE, H = WALL_H;
-      quad(cp, cn, cu, ci, [x0, H, z1], [x1, H, z1], [x1, H, z0], [x0, H, z0], [0, 1, 0]);
-      const open = (xx, yy) => d.get(xx, yy) !== WALL;
-      const bot = -0.31;
-      if (open(x + 1, y)) quad(wp, wn, wu, wi, [x1, bot, z1], [x1, bot, z0], [x1, H, z0], [x1, H, z1], [1, 0, 0]);
-      if (open(x - 1, y)) quad(wp, wn, wu, wi, [x0, bot, z0], [x0, bot, z1], [x0, H, z1], [x0, H, z0], [-1, 0, 0]);
-      if (open(x, y + 1)) quad(wp, wn, wu, wi, [x0, bot, z1], [x1, bot, z1], [x1, H, z1], [x0, H, z1], [0, 0, 1]);
-      if (open(x, y - 1)) quad(wp, wn, wu, wi, [x1, bot, z0], [x0, bot, z0], [x0, H, z0], [x1, H, z0], [0, 0, -1]);
-      // outer faces (towards void) so shadows are closed
-      if (!open(x + 1, y) && !d.isWallVisible(x + 1, y)) quad(wp, wn, wu, wi, [x1, 0, z1], [x1, 0, z0], [x1, H, z0], [x1, H, z1], [1, 0, 0]);
-      if (!open(x, y + 1) && !d.isWallVisible(x, y + 1)) quad(wp, wn, wu, wi, [x0, 0, z1], [x1, 0, z1], [x1, H, z1], [x0, H, z1], [0, 0, 1]);
+      g.setAttribute('position', new THREE.Float32BufferAttribute(b.P, 3));
+      g.setAttribute('normal', new THREE.Float32BufferAttribute(b.N, 3));
+      g.setAttribute('uv', new THREE.Float32BufferAttribute(b.U, 2));
+      g.setAttribute('color', new THREE.Float32BufferAttribute(b.C, 3));
+      g.setIndex(b.I);
+      const m = new THREE.Mesh(g, matFor[b.kind]);
+      m.castShadow = b.kind === 'wall' || b.kind === 'cap';
+      m.receiveShadow = b.kind !== 'cap' || true;
+      m.matrixAutoUpdate = false;
+      m.userData.ownGeo = true;
+      if (b.kind === 'liquid') m.renderOrder = 1;
+      this.world.add(m);
     }
-    mkMesh(wp, wn, wu, wi, mats.wallMat, true, true);
-    mkMesh(cp, cn, cu, ci, mats.capMat, true, false);
 
-    // ---- torches on visible walls (faces pointing +x / +z, toward camera side)
+    // ---- torches on wall faces that look toward the camera (+x / +z)
     const torchCol = new THREE.Color(biome.torch);
     for (const r of d.rooms) {
       const cand = [];
-      for (let x = r.x; x < r.x + r.w; x++) if (d.get(x, r.y - 1) === WALL && d.get(x, r.y) === FLOOR) cand.push({ x, y: r.y - 1, dir: 'z' });
-      for (let y = r.y; y < r.y + r.h; y++) if (d.get(r.x - 1, y) === WALL && d.get(r.x, y) === FLOOR) cand.push({ x: r.x - 1, y, dir: 'x' });
+      for (let y = r.y; y < r.y + r.h; y++) for (let x = r.x; x < r.x + r.w; x++) {
+        if (d.get(x, y) !== FLOOR) continue;
+        if (d.get(x, y - 1) === WALL && d.get(x - 1, y) !== WALL && d.get(x + 1, y) !== WALL) cand.push({ x, y: y - 1, dir: 'z' });
+        if (d.get(x - 1, y) === WALL && d.get(x, y - 1) !== WALL && d.get(x, y + 1) !== WALL) cand.push({ x: x - 1, y, dir: 'x' });
+      }
       const n = Math.min(cand.length, 1 + Math.floor(d.rand() * 3));
       for (let k = 0; k < n; k++) {
         const c = cand.splice(Math.floor(d.rand() * cand.length), 1)[0];
@@ -336,36 +399,63 @@ export class Game {
         let px, pz;
         if (c.dir === 'z') { px = (c.x + 0.5) * TILE; pz = (c.y + 1) * TILE; t.rotation.y = 0; }
         else { px = (c.x + 1) * TILE; pz = (c.y + 0.5) * TILE; t.rotation.y = Math.PI / 2; }
-        t.position.set(px, 1.8, pz);
+        t.position.set(px, 1.7, pz);
         this.world.add(t);
         const fx = c.dir === 'z' ? px : px + 0.55, fz = c.dir === 'z' ? pz + 0.55 : pz;
-        this.torches.push({ x: fx, y: 2.15, z: fz, color: torchCol, i: 16 * biome.torchI, seed: Math.random() * 100 });
+        this.torches.push({ x: fx, y: 2.05, z: fz, color: torchCol, i: 16 * biome.torchI, seed: Math.random() * 100 });
       }
     }
 
-    // ---- props
+    // ---- props (some are breakable physics objects)
     const propKinds = biome.props;
-    for (let ri = 0; ri < d.rooms.length; ri++) {
-      const r = d.rooms[ri];
-      const n = 1 + Math.floor(d.rand() * 4);
+    const ex = d.exit;
+    for (const r of d.rooms) {
+      const n = 2 + Math.floor(d.rand() * 4);
       for (let k = 0; k < n; k++) {
-        // near room edges to keep the middle clear
-        const edge = d.rand() < 0.5;
-        const x = edge ? (d.rand() < 0.5 ? r.x : r.x + r.w - 1) : r.x + 1 + Math.floor(d.rand() * (r.w - 2));
-        const y = !edge ? (d.rand() < 0.5 ? r.y : r.y + r.h - 1) : r.y + 1 + Math.floor(d.rand() * (r.h - 2));
+        const x = r.x + Math.floor(d.rand() * r.w), y = r.y + Math.floor(d.rand() * r.h);
         if (d.get(x, y) !== FLOOR) continue;
         if (Math.abs(x - r.cx) < 2 && Math.abs(y - r.cy) < 2) continue;
-        // keep corridor mouths clear
-        let nearCorr = false;
-        for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) { if (!d.roomAt(x + dx, y + dy) && d.get(x + dx, y + dy) === FLOOR) nearCorr = true; }
-        if (nearCorr) continue;
+        // prefer cells hugging a wall, never next to a corridor mouth or a trap
+        let wallN = 0, nearCorr = false;
+        for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) {
+          const v = d.get(x + dx, y + dy);
+          if (v === WALL) wallN++;
+          if (v === FLOOR && !d.roomAt(x + dx, y + dy)) nearCorr = true;
+        }
+        if (nearCorr || (wallN === 0 && d.rand() < 0.75)) continue;
+        if (d.traps.some((t) => t.x === x && t.y === y)) continue;
         const kind = propKinds[Math.floor(d.rand() * propKinds.length)];
         const p = makeProp(kind, d.rand);
         p.position.set((x + 0.5) * TILE + (d.rand() - 0.5) * 0.6, 0, (y + 0.5) * TILE + (d.rand() - 0.5) * 0.6);
         p.traverse((o) => { if (o.isMesh) { o.castShadow = true; o.receiveShadow = true; } });
         this.world.add(p);
-        if (p.userData.solid) this.obstacles.push({ x: p.position.x, z: p.position.z, r: p.userData.solid });
-        if (p.userData.glow) this.glows.push({ x: p.position.x, y: 1.2, z: p.position.z, color: new THREE.Color(p.userData.glow), i: 6, seed: Math.random() * 10, fire: p.userData.fire });
+        const breakable = BREAKABLE[kind];
+        let glow = null;
+        if (p.userData.glow) { glow = { x: p.position.x, y: 1.2, z: p.position.z, color: new THREE.Color(p.userData.glow), i: 6, seed: Math.random() * 10, fire: p.userData.fire }; this.glows.push(glow); }
+        if (p.userData.solid) this.obstacles.push({ x: p.position.x, z: p.position.z, r: p.userData.solid, mesh: p, breakable, glow });
+      }
+    }
+    // loose rubble: one instanced draw call of small stones scattered on the floor
+    {
+      const cells = [];
+      for (let y = 0; y < d.h; y++) for (let x = 0; x < d.w; x++) if (d.get(x, y) === FLOOR && hash(x + 91, y + 17) < 0.3) cells.push(x, y);
+      const count = cells.length / 2 * 2;
+      if (count) {
+        const im = new THREE.InstancedMesh(this.rubbleGeo || (this.rubbleGeo = new THREE.DodecahedronGeometry(0.12, 0)), mats.rubbleMat, count);
+        const mtx = new THREE.Matrix4(), q = new THREE.Quaternion(), eu = new THREE.Euler(), sc = new THREE.Vector3(), ps = new THREE.Vector3();
+        let n = 0;
+        for (let i = 0; i < cells.length; i += 2) for (let k = 0; k < 2; k++) {
+          const hx = hash(cells[i] * 3 + k, cells[i + 1] * 5), hz = hash(cells[i] * 7, cells[i + 1] * 3 + k), hs = hash(cells[i] + k * 13, cells[i + 1] + 29);
+          // push rubble toward walls where debris collects
+          ps.set((cells[i] + 0.08 + hx * 0.84) * TILE, 0.03, (cells[i + 1] + 0.08 + hz * 0.84) * TILE);
+          eu.set(hx * 6, hz * 6, hs * 6); q.setFromEuler(eu);
+          sc.set(0.5 + hs * 1.6, 0.3 + hx * 0.7, 0.5 + hz * 1.4);
+          mtx.compose(ps, q, sc); im.setMatrixAt(n++, mtx);
+        }
+        im.instanceMatrix.needsUpdate = true;
+        im.receiveShadow = true; im.castShadow = false;
+        im.computeBoundingSphere();
+        this.world.add(im);
       }
     }
     // liquid glows (a light per pool)
@@ -373,8 +463,45 @@ export class Game {
       this.glows.push({ x: (r.pool.x + r.pool.w / 2) * TILE, y: 0.8, z: (r.pool.y + r.pool.h / 2) * TILE, color: new THREE.Color(biome.liquid.emissive), i: biome.liquid.lava ? 22 : 8, seed: Math.random() * 10, pool: true });
     }
 
+    // ---- spike traps
+    for (const t of d.traps) {
+      const g = new THREE.Group();
+      const plate = new THREE.Mesh(this.trapPlateGeo || (this.trapPlateGeo = new THREE.BoxGeometry(1.7, 0.06, 1.7)), M('trapPlate', { color: 0x2a2a30, metalness: 0.85, roughness: 0.45 }));
+      plate.position.y = 0.02; plate.receiveShadow = true; g.add(plate);
+      const rimMat = new THREE.MeshStandardMaterial({ color: 0x000000, emissive: 0xff2010, emissiveIntensity: 0 });
+      const rim = new THREE.Mesh(this.trapRimGeo || (this.trapRimGeo = (() => { const rg = new THREE.RingGeometry(0.98, 1.12, 4, 1); rg.rotateX(-Math.PI / 2); rg.rotateY(Math.PI / 4); return rg; })()), rimMat);
+      rim.position.y = 0.06; g.add(rim);
+      if (!this.spikeGeo) {
+        const parts = [];
+        for (let j = 0; j < 3; j++) for (let i = 0; i < 3; i++) { const c = new THREE.ConeGeometry(0.11, 0.95, 6); c.translate((i - 1) * 0.5, 0.475, (j - 1) * 0.5); parts.push(c); }
+        this.spikeGeo = mergeGeos(parts);
+      }
+      const spikes = new THREE.Mesh(this.spikeGeo, M('spikeMat', { color: 0xc8ccd4, metalness: 1, roughness: 0.25 }));
+      spikes.position.y = -1; spikes.castShadow = true; g.add(spikes);
+      g.position.set((t.x + 0.5) * TILE, 0, (t.y + 0.5) * TILE);
+      this.world.add(g);
+      this.traps.push({ x: g.position.x, z: g.position.z, spikes, rimMat, t: Math.random() * 3.2, hit: false, up: 0 });
+    }
+
+    // ---- healing shrine
+    if (d.shrine) {
+      const g = new THREE.Group();
+      const base = new THREE.Mesh(new THREE.CylinderGeometry(0.75, 0.95, 0.5, 8), M('shrineStone', { color: 0x6a6660, roughness: 0.85 }));
+      base.position.y = 0.25; base.castShadow = true; base.receiveShadow = true; base.userData.ownGeo = true; g.add(base);
+      const bowl = new THREE.Mesh(new THREE.CylinderGeometry(0.6, 0.45, 0.25, 12), M('shrineStone'));
+      bowl.position.y = 0.62; bowl.castShadow = true; bowl.userData.ownGeo = true; g.add(bowl);
+      const crystalMat = new THREE.MeshStandardMaterial({ color: 0x103018, emissive: 0x40ff90, emissiveIntensity: 3, roughness: 0.1 });
+      const crystal = new THREE.Mesh(new THREE.OctahedronGeometry(0.32, 0), crystalMat);
+      crystal.position.y = 1.5; crystal.scale.y = 1.6; crystal.userData.ownGeo = true; g.add(crystal);
+      g.position.set((d.shrine.x + 0.5) * TILE, 0, (d.shrine.y + 0.5) * TILE);
+      this.world.add(g);
+      const glow = { x: g.position.x, y: 1.6, z: g.position.z, color: new THREE.Color(0x40ff90), i: 12, seed: 1 };
+      this.glows.push(glow);
+      this.obstacles.push({ x: g.position.x, z: g.position.z, r: 0.85 });
+      this.shrine = { x: g.position.x, z: g.position.z, crystal, crystalMat, glow, used: false };
+    }
+
     // ---- portal
-    const ex = d.exit;
     this.portal = makePortal(biome.torch);
     this.portal.position.set((ex.cx + 0.5) * TILE, 0, (ex.cy + 0.5) * TILE);
     this.portal.traverse((o) => { if (o.isMesh) o.receiveShadow = true; });
@@ -383,11 +510,12 @@ export class Game {
     this.glows.push({ x: this.portal.position.x, y: 1.0, z: this.portal.position.z, color: new THREE.Color(biome.torch), i: 14, seed: 0, portal: true });
 
     // ---- chests
-    const chestRooms = d.rooms.slice(1).filter((r) => r !== ex);
+    const chestRooms = d.rooms.slice(1).filter((r) => r !== ex && !r.shrine);
     const nChests = Math.min(chestRooms.length, 1 + Math.floor(d.rand() * 2) + (floor > 4 ? 1 : 0));
     for (let k = 0; k < nChests; k++) {
       const r = chestRooms.splice(Math.floor(d.rand() * chestRooms.length), 1)[0];
-      const c = d.randomFloorIn(r);
+      let c = d.randomFloorIn(r);
+      for (let tries = 0; tries < 10 && (this.blocked((c.x + 0.5) * TILE, (c.y + 0.5) * TILE, 0.7, false) || d.traps.some((t) => t.x === c.x && t.y === c.y)); tries++) c = d.randomFloorIn(r);
       const ch = makeChest();
       ch.position.set((c.x + 0.5) * TILE, 0, (c.y + 0.5) * TILE);
       ch.rotation.y = Math.PI / 4;
@@ -398,17 +526,22 @@ export class Game {
     }
 
     // ---- enemies
-    {
-      const roster = biome.enemies;
-      for (let ri = 1; ri < d.rooms.length; ri++) {
-        const r = d.rooms[ri];
-        if (r === ex && isBossFloor(floor)) continue;
-        const area = r.w * r.h;
-        const count = Math.min(1 + Math.floor(area / 26) + Math.floor(floor / 3) + Math.floor(d.rand() * 2), 7);
-        for (let k = 0; k < count; k++) {
+    const roster = biome.enemies;
+    for (let ri = 1; ri < d.rooms.length; ri++) {
+      const r = d.rooms[ri];
+      if (r === ex && isBossFloor(floor)) continue;
+      const area = r.w * r.h;
+      let count = Math.min(1 + Math.floor(area / 26) + Math.floor(floor / 3) + Math.floor(d.rand() * 2), 7);
+      if (r.shrine) count = Math.min(count, 2);
+      for (let k = 0; k < count; k++) {
+        const type = roster[Math.floor(d.rand() * roster.length)];
+        const rad = ENEMY_DEFS[type].r;
+        for (let tries = 0; tries < 12; tries++) {
           const c = d.randomFloorIn(r);
-          const type = roster[Math.floor(d.rand() * roster.length)];
-          this.spawnEnemy(type, (c.x + 0.5) * TILE + rnd(-0.4, 0.4), (c.y + 0.5) * TILE + rnd(-0.4, 0.4));
+          const px = (c.x + 0.5) * TILE + rnd(-0.4, 0.4), pz = (c.y + 0.5) * TILE + rnd(-0.4, 0.4);
+          if (this.blocked(px, pz, rad + 0.05, false)) continue;
+          this.spawnEnemy(type, px, pz);
+          break;
         }
       }
     }
@@ -418,6 +551,7 @@ export class Game {
     this.spawnX = (s.cx + 0.5) * TILE; this.spawnZ = (s.cy + 0.5) * TILE;
     this.camTarget.set(this.spawnX, 0, this.spawnZ);
     this.ambientTimer = 0;
+    this.shadowDirty = true;
   }
 
   spawnEnemy(type, x, z, opts = {}) {
@@ -427,7 +561,7 @@ export class Game {
     const dmgMul = 1 + 0.12 * (f - 1);
     const model = makeEnemyModel(type, this.biome.id);
     model.position.set(x, 0, z);
-    model.traverse((o) => { if (o.isMesh) o.castShadow = true; });
+    this.prepModel(model);
     this.world.add(model);
     const blob = new THREE.Mesh(this.blobGeo || (this.blobGeo = new THREE.PlaneGeometry(1, 1)), this.blobMat || (this.blobMat = new THREE.MeshBasicMaterial({ map: this.blobTex, transparent: true, depthWrite: false })));
     blob.rotation.x = -Math.PI / 2; blob.position.y = 0.03; blob.scale.setScalar(def.r * 2.6);
@@ -436,10 +570,44 @@ export class Game {
       type, def, model, x, z, vx: 0, vz: 0, r: def.r,
       hp: def.hp * hpMul, maxHp: def.hp * hpMul, dmg: def.dmg * dmgMul,
       speed: def.speed * rnd(0.9, 1.1), state: 'idle', t: 0, cd: rnd(0.5, 2), anim: Math.random() * 10,
-      aggro: false, face: Math.random() * 6, hitT: 0, scale: 1, kx: 0, kz: 0, ...opts,
+      aggro: false, face: Math.random() * 6, hitT: 0, scale: 1, kx: 0, kz: 0, mass: def.mass || 1, flash: 0, mats: model.userData.flashMats, ...opts,
     };
     this.enemies.push(e);
     return e;
+  }
+
+  // Give each enemy its own material instances so hits can flash white without touching its siblings.
+  prepModel(model) {
+    const map = new Map(), list = [];
+    model.traverse((o) => {
+      if (!o.isMesh) return;
+      o.castShadow = true;
+      const src = o.material;
+      if (!src || !src.isMeshStandardMaterial) return;
+      let c = map.get(src);
+      if (!c) { c = src.clone(); c.userData = { e: src.emissive.clone(), ei: src.emissiveIntensity }; map.set(src, c); list.push(c); }
+      o.material = c;
+    });
+    model.userData.flashMats = list;
+  }
+
+  freeEnemy(e) {
+    if (e.mats) { for (const m of e.mats) m.dispose(); e.mats = null; }
+    if (e.bar) { this.scene.remove(e.bar.bg, e.bar.fill); e.bar = null; }
+  }
+
+  showBar(e) {
+    if (e.boss) return;
+    if (!e.bar) {
+      const bgM = this.barBg || (this.barBg = new THREE.SpriteMaterial({ color: 0x000000, opacity: 0.65, transparent: true, depthTest: false, toneMapped: false }));
+      const fM = this.barFill || (this.barFill = new THREE.SpriteMaterial({ color: 0x9a1016, depthTest: false, toneMapped: false }));
+      const bg = new THREE.Sprite(bgM), fill = new THREE.Sprite(fM);
+      bg.center.set(0, 0.5); fill.center.set(0, 0.5);
+      bg.renderOrder = 20; fill.renderOrder = 21;
+      this.scene.add(bg, fill);
+      e.bar = { bg, fill };
+    }
+    e.bar.t = 3.5;
   }
 
   spawnBoss() {
@@ -449,7 +617,7 @@ export class Game {
     const x = (ex.cx + 0.5) * TILE + 3, z = (ex.cy + 0.5) * TILE - 3;
     const model = makeEnemyModel(type, this.biome.id);
     model.scale.setScalar(bd.scale);
-    model.traverse((o) => { if (o.isMesh) o.castShadow = true; });
+    this.prepModel(model);
     model.position.set(x, 0, z);
     this.world.add(model);
     const f = this.floor;
@@ -457,7 +625,7 @@ export class Game {
     const e = {
       type, boss: true, def: { ...bd, ai: 'boss', color: bd.pcolor, pcolor: bd.pcolor, pspeed: 9, death: 'explode', xp: 120, fly: type === 'frostqueen' || type === 'overseer' },
       model, x, z, vx: 0, vz: 0, r: bd.r, hp: bd.hp * mul, maxHp: bd.hp * mul, dmg: bd.dmg * (1 + 0.1 * (f - 1)), speed: bd.speed,
-      state: 'intro', t: 1.8, cd: 2, anim: 0, aggro: true, face: 0, hitT: 0, scale: bd.scale, kx: 0, kz: 0, phase: 0, pattern: 0,
+      state: 'intro', t: 1.8, cd: 2, anim: 0, aggro: true, face: 0, hitT: 0, scale: bd.scale, kx: 0, kz: 0, phase: 0, pattern: 0, mass: 20, flash: 0, mats: model.userData.flashMats,
     };
     this.enemies.push(e);
     this.boss = e;
@@ -539,13 +707,44 @@ export class Game {
     return false;
   }
 
+  // Push a circle out of walls/props. Returns true on contact; contact normal in this.hitNX/Z.
+  resolve(ent, fly) {
+    const d = this.dungeon, r = ent.r;
+    let hit = false, hx = 0, hz = 0;
+    for (let iter = 0; iter < 2; iter++) {
+      const x0 = Math.floor((ent.x - r) / TILE), x1 = Math.floor((ent.x + r) / TILE);
+      const z0 = Math.floor((ent.z - r) / TILE), z1 = Math.floor((ent.z + r) / TILE);
+      for (let cz = z0; cz <= z1; cz++) for (let cx = x0; cx <= x1; cx++) {
+        const v = d.get(cx, cz);
+        if (v === FLOOR || (v === LIQUID && fly)) continue;
+        const nx = Math.max(cx * TILE, Math.min(ent.x, (cx + 1) * TILE));
+        const nz = Math.max(cz * TILE, Math.min(ent.z, (cz + 1) * TILE));
+        const dx = ent.x - nx, dz = ent.z - nz, d2 = dx * dx + dz * dz;
+        if (d2 >= r * r) continue;
+        if (d2 > 1e-8) { const dd = Math.sqrt(d2), push = r - dd; ent.x += dx / dd * push; ent.z += dz / dd * push; hx += dx / dd; hz += dz / dd; hit = true; }
+        else { hit = true; this.deep = true; }
+      }
+      for (let i = 0; i < this.obstacles.length; i++) {
+        const o = this.obstacles[i];
+        const dx = ent.x - o.x, dz = ent.z - o.z, rr = r + o.r, d2 = dx * dx + dz * dz;
+        if (d2 < rr * rr && d2 > 1e-8) { const dd = Math.sqrt(d2), push = rr - dd; ent.x += dx / dd * push; ent.z += dz / dd * push; hx += dx / dd; hz += dz / dd; hit = true; }
+      }
+    }
+    if (hit) { const l = Math.hypot(hx, hz) || 1; this.hitNX = hx / l; this.hitNZ = hz / l; }
+    return hit;
+  }
+
+  // Swept move in small sub-steps so fast bodies never tunnel; slides smoothly along walls and around corners.
   move(ent, dx, dz, fly) {
-    const steps = Math.ceil(Math.max(Math.abs(dx), Math.abs(dz)) / 0.3) || 1;
+    const steps = Math.min(8, Math.ceil(Math.max(Math.abs(dx), Math.abs(dz)) / 0.25) || 1);
     const sx = dx / steps, sz = dz / steps;
     let hit = false;
     for (let i = 0; i < steps; i++) {
-      if (!this.blocked(ent.x + sx, ent.z, ent.r, fly)) ent.x += sx; else hit = true;
-      if (!this.blocked(ent.x, ent.z + sz, ent.r, fly)) ent.z += sz; else hit = true;
+      const px = ent.x, pz = ent.z;
+      ent.x += sx; ent.z += sz;
+      this.deep = false;
+      if (this.resolve(ent, fly)) hit = true;
+      if (this.deep || this.blocked(ent.x, ent.z, ent.r * 0.9, fly)) { ent.x = px; ent.z = pz; hit = true; break; }
     }
     return hit;
   }
@@ -554,15 +753,21 @@ export class Game {
     if (e.dead) return;
     e.hp -= amount;
     e.hitT = 0.15;
+    e.flash = 1;
     e.aggro = true;
-    if (!e.boss) { e.kx += kx; e.kz += kz; }
+    if (!e.boss) { e.kx += kx / e.mass; e.kz += kz / e.mass; }
+    this.showBar(e);
     this.stats.dmgDealt += amount;
     const p = this.player;
     if (p.lifesteal > 0 && source !== 'thorns') p.hp = Math.min(p.maxHp, p.hp + amount * p.lifesteal);
     this.ui.damageNumber(e.x, 1.6 * e.scale + 0.4, e.z, Math.round(amount), crit ? 'crit' : 'hit', this.camera);
     this.particles.burst(e.x, 1.0 * e.scale, e.z, crit ? 18 : 10, e.def.color, 6, 0.35, 0.45, -10);
     this.particles.burst(e.x, 1.0 * e.scale, e.z, 4, 0xffffff, 8, 0.25, 0.15, 0);
-    if (crit) { sfx('crit'); this.hitstop = 0.06; this.shakeIt(0.25); } else sfx('hit');
+    if (crit) sfx('crit'); else sfx('hit');
+    if (source !== 'melee' && crit) { this.hitstop = Math.max(this.hitstop, 0.06); this.shakeIt(0.25); }
+    // light enemies flinch: a clean hit interrupts whatever they were winding up
+    if (source === 'melee' && !e.boss && e.mass <= 1.5 && (e.state === 'windup' || e.state === 'chase' || e.state === 'idle')) { e.state = 'recover'; e.t = Math.max(e.t, 0.22); }
+    e.recoil = 1;
     if (e.hp <= 0) this.killEnemy(e);
     else if (e.boss) this.ui.bossBar(null, e.hp / e.maxHp);
   }
@@ -576,12 +781,23 @@ export class Game {
     this.particles.burst(e.x, 0.8 * s, e.z, e.boss ? 60 : 12, 0xffffff, 5, 0.3, 0.5, -2);
     sfx(e.def.death || 'death');
     if (e.def.death !== 'death') sfx('death');
-    this.world.remove(e.model);
+    {
+      const kl0 = Math.hypot(e.kx, e.kz) || 1;
+      this.dying.push({ model: e.model, mats: e.mats, t: 0, s: e.scale, kx: e.kx / kl0, kz: e.kz / kl0 });
+      e.mats = null;
+    }
+    this.freeEnemy(e);
+    this.hitstop = Math.max(this.hitstop, e.boss ? 0.25 : 0.06);
+    {
+      const kl = Math.hypot(e.kx, e.kz) || 1;
+      const chunk = e.type === 'golem' || e.boss ? 0.34 : 0.16;
+      this.debris.spawn(e.x, 0.6 * s, e.z, e.boss ? 40 : (e.type === 'slime' || e.type === 'slimeSmall' || e.def.fly ? 4 : 9), DEBRIS_COL[e.type] || e.def.color, e.boss ? 9 : 5, chunk * (e.boss ? 1.3 : 1), e.kx / kl * 0.8, e.kz / kl * 0.8);
+    }
     this.gainXp(e.def.xp || 5);
     if (e.def.split) {
       for (let k = 0; k < 2; k++) {
         const c = this.spawnEnemy(e.def.split, e.x + rnd(-0.6, 0.6), e.z + rnd(-0.6, 0.6));
-        c.aggro = true; c.kx = rnd(-6, 6); c.kz = rnd(-6, 6);
+        c.aggro = true; c.spawnT = 0; c.kx = rnd(-6, 6); c.kz = rnd(-6, 6);
       }
     }
     // drops
@@ -628,7 +844,11 @@ export class Game {
     p.hp -= dmg;
     p.inv = 0.5;
     this.hurtFlash = 1;
-    this.shakeIt(0.35);
+    this.shakeIt(0.4);
+    this.hitstop = Math.max(this.hitstop, 0.05);
+    p.hurtT = 0.3;
+    if (navigator.vibrate && settings.shake) navigator.vibrate(45);
+    if (sx !== undefined) this.kick(p.x - sx, p.z - sz, 0.12);
     sfx('playerHurt');
     this.ui.damageNumber(p.x, 2.2, p.z, Math.round(dmg), 'player', this.camera);
     this.particles.burst(p.x, 1.1, p.z, 14, 0xff2030, 5, 0.3, 0.5, -10);
@@ -652,11 +872,42 @@ export class Game {
 
   shoot(x, z, dirx, dirz, speed, dmg, color, owner, size = 0.22) {
     const geo = this.projGeo || (this.projGeo = new THREE.SphereGeometry(1, 10, 8));
-    const m = new THREE.Mesh(geo, M('proj' + color, { color: 0x000000, emissive: color, emissiveIntensity: 5 }));
+    const pool = this.projPool || (this.projPool = []);
+    const m = pool.pop() || new THREE.Mesh(geo);
+    m.material = M('proj' + color, { color: 0x000000, emissive: color, emissiveIntensity: 5 });
     m.scale.setScalar(size);
     m.position.set(x, 1.1, z);
     this.world.add(m);
-    this.projectiles.push({ x, z, vx: dirx * speed, vz: dirz * speed, dmg, color: new THREE.Color(color), owner, life: 4, mesh: m, r: size + 0.15 });
+    const cols = this.projCols || (this.projCols = {});
+    this.projectiles.push({ x, z, vx: dirx * speed, vz: dirz * speed, dmg, color: cols[color] || (cols[color] = new THREE.Color(color)), hex: color, owner, life: 4, mesh: m, r: size + 0.15 });
+  }
+
+  // Smash a breakable prop: debris, dust, maybe loot. Removes its collider and light.
+  breakProp(o, dirX, dirZ) {
+    const i = this.obstacles.indexOf(o);
+    if (i < 0) return;
+    this.obstacles.splice(i, 1);
+    this.world.remove(o.mesh);
+    if (o.glow) { const gi = this.glows.indexOf(o.glow); if (gi >= 0) this.glows.splice(gi, 1); }
+    const b = o.breakable;
+    this.debris.spawn(o.x, 0.5, o.z, 10, b.color, 5.5, 0.2, dirX, dirZ);
+    this.particles.burst(o.x, 0.6, o.z, 16, 0xb0a898, 3.5, 0.45, 0.7, -3);
+    sfx('bones'); this.shakeIt(0.12);
+    if (this.state === 'play') {
+      if (Math.random() < b.gold) { const n = 1 + Math.floor(Math.random() * 3); for (let k = 0; k < n; k++) this.spawnPickup('gold', o.x, o.z, 2 + Math.floor(Math.random() * 3 * this.floor)); }
+      if (Math.random() < 0.04) this.spawnPickup('potion', o.x, o.z);
+    }
+  }
+
+  breakPropsNear(x, z, radius, fx, fz, cosArc) {
+    for (let i = this.obstacles.length - 1; i >= 0; i--) {
+      const o = this.obstacles[i];
+      if (!o.breakable) continue;
+      const dx = o.x - x, dz = o.z - z, dd = Math.hypot(dx, dz);
+      if (dd > radius + o.r) continue;
+      if (cosArc !== undefined && dd > 0.6 && (dx * fx + dz * fz) / dd < cosArc) continue;
+      this.breakProp(o, dx / (dd || 1), dz / (dd || 1));
+    }
   }
 
   addDecal(x, z, radius, color, time, onDone) {
@@ -729,19 +980,28 @@ export class Game {
     if (p.dashing > 0) {
       p.dashing -= dt;
       this.move(p, p.dvx * dt, p.dvz * dt);
+      this.breakPropsNear(p.x, p.z, p.r + 0.3);
+      if (p.dashing <= 0) { p.vx = p.dvx * 0.3; p.vz = p.dvz * 0.3; } // carry momentum out of the dash
       if (Math.random() < 0.9) this.particles.emit(p.x, rnd(0.5, 1.6), p.z, 0, 0.5, 0, 0.5, 0.7, 1, 0.5, 0.35, 0, 0.9);
     } else {
-      const spd = p.speed * (p.swing > 0 ? 0.55 : 1);
-      p.vx += (mx * spd - p.vx) * Math.min(1, dt * 14);
-      p.vz += (mz * spd - p.vz) * Math.min(1, dt * 14);
-      this.move(p, p.vx * dt, p.vz * dt);
+      const spd = p.speed * (p.swing > 0 ? 0.35 : 1);
+      // acceleration is limited by surface grip: stone bites, ice lets you slide
+      const k = 1 - Math.exp(-dt * this.grip);
+      p.vx += (mx * spd - p.vx) * k;
+      p.vz += (mz * spd - p.vz) * k;
+      if (this.move(p, p.vx * dt, p.vz * dt)) {
+        // lose the velocity component going into the surface, keep the tangential slide
+        const vn = p.vx * this.hitNX + p.vz * this.hitNZ;
+        if (vn < 0) { p.vx -= vn * this.hitNX; p.vz -= vn * this.hitNZ; }
+      }
     }
     const moving = ml > 0.1;
     if (moving && p.swing <= 0) p.face = Math.atan2(mx, mz);
-    if (target && (p.swing > 0 || (!moving && td < 30))) p.face = Math.atan2(target.x - p.x, target.z - p.z);
+    if (target && p.swing <= 0 && !moving && td < 30) p.face = Math.atan2(target.x - p.x, target.z - p.z);
 
     // actions
     if (inp.attack && p.tAttack <= 0) this.playerAttack(target, td);
+    if (p.pendingHit) { p.pendingHit.t -= dt; if (p.pendingHit.t <= 0) { const h = p.pendingHit.heavy; p.pendingHit = null; this.resolveHit(h); } }
     if (inp.dash) { inp.dash = false; if (p.tDash <= 0) this.playerDash(mx, mz, ml); }
     if (inp.nova) { inp.nova = false; if (p.tNova <= 0) this.playerNova(); }
     if (inp.potion) { inp.potion = false; this.drinkPotion(); }
@@ -752,6 +1012,7 @@ export class Game {
       if (p.stepT <= 0) { p.stepT = 0.32; sfx('step', this.biome.step); this.particles.emit(p.x, 0.1, p.z, rnd(-0.5, 0.5), 0.6, rnd(-0.5, 0.5), 0.35, 0.32, 0.3, 0.35, 0.5, -1, 0.9); }
     }
 
+    this.lookAt = target && td < 81 ? target : null;
     this.animatePlayer(dt, ml);
 
     // explore
@@ -788,30 +1049,102 @@ export class Game {
 
   playerAttack(target, td) {
     const p = this.player;
-    p.tAttack = p.attackCd;
-    p.swing = 0.26; p.swingSide *= -1;
-    sfx('swing');
+    // three-hit combo: left slash, right slash, heavy overhead finisher
+    p.combo = this.time - (p.lastAttack || -9) < 0.75 ? ((p.combo || 0) + 1) % 3 : 0;
+    p.lastAttack = this.time;
+    const heavy = p.combo === 2;
+    p.swingDur = heavy ? 0.38 : 0.26;
+    p.tAttack = p.attackCd * (heavy ? 1.3 : 1);
+    p.swing = p.swingDur; p.swingSide = p.combo === 1 ? -1 : 1; p.heavy = heavy;
     if (target && td < (p.reach + 1.5) ** 2) p.face = Math.atan2(target.x - p.x, target.z - p.z);
     const fx = Math.sin(p.face), fz = Math.cos(p.face);
-    // slash arc particles
-    for (let k = 0; k < 14; k++) {
-      const a = p.face + (k / 13 - 0.5) * 1.9 * p.swingSide;
-      const rr = p.reach * 0.85;
-      this.particles.emit(p.x + Math.sin(a) * rr, 1.0, p.z + Math.cos(a) * rr, Math.sin(a) * 2, 0, Math.cos(a) * 2, 0.6, 0.85, 1.0, 0.45, 0.22, 0, 0.9);
-    }
-    let hitAny = false;
+    // step into the blow: the body's weight goes into it
+    p.vx += fx * (heavy ? 6.5 : 3.6); p.vz += fz * (heavy ? 6.5 : 3.6);
+    // the hit itself lands a moment later, when the blade actually comes around
+    p.pendingHit = { t: heavy ? 0.15 : 0.07, heavy };
+    sfx('swing');
+  }
+
+  resolveHit(heavy) {
+    const p = this.player;
+    const fx = Math.sin(p.face), fz = Math.cos(p.face);
+    const reach = p.reach * (heavy ? 1.25 : 1), arc = heavy ? 1.5 : 1.05;
+    this.slash(p.x, p.z, p.face, reach, p.swingSide, heavy);
+    let hits = 0, crits = 0, hx = 0, hz = 0;
     for (const e of this.enemies) {
       if (e.dead) continue;
       const dx = e.x - p.x, dz = e.z - p.z, d = Math.hypot(dx, dz);
-      if (d > p.reach + e.r) continue;
+      if (d > reach + e.r) continue;
       const dot = (dx * fx + dz * fz) / (d || 1);
-      if (dot < Math.cos(1.05) && d > e.r + 0.4) continue;
+      if (dot < Math.cos(arc) && d > e.r + 0.4) continue;
       const crit = Math.random() < p.crit;
-      const dmg = p.dmg * rnd(0.9, 1.1) * (crit ? p.critMult : 1);
-      this.damageEnemy(e, dmg, dx / (d || 1) * 9, dz / (d || 1) * 9, crit);
-      hitAny = true;
+      const dmg = p.dmg * rnd(0.9, 1.1) * (crit ? p.critMult : 1) * (heavy ? 1.7 : 1);
+      const kb = heavy ? 17 : 9;
+      // impact sparks fly along the blade's travel, at the point of contact
+      const ix = e.x - dx / (d || 1) * e.r * 0.7, iz = e.z - dz / (d || 1) * e.r * 0.7;
+      const tx = -fz * p.swingSide, tz = fx * p.swingSide;
+      for (let k = 0; k < (heavy ? 14 : 8); k++) {
+        const sp = rnd(5, 13);
+        this.particles.emit(ix, 1.1 * e.scale, iz, (tx * 0.8 + dx / (d || 1) * 0.6) * sp + rnd(-2, 2), rnd(1, 5), (tz * 0.8 + dz / (d || 1) * 0.6) * sp + rnd(-2, 2), 1, 0.9, 0.6, rnd(0.18, 0.34), rnd(0.12, 0.3), -14, 0.92);
+      }
+      this.damageEnemy(e, dmg, dx / (d || 1) * kb, dz / (d || 1) * kb, crit, 'melee');
+      hits++; if (crit) crits++; hx += dx / (d || 1); hz += dz / (d || 1);
     }
-    if (hitAny) this.shakeIt(0.12);
+    this.breakPropsNear(p.x, p.z, reach * 0.9, fx, fz, Math.cos(arc));
+    if (heavy) {
+      // the finisher cracks the ground whether or not it connects
+      const gx = p.x + fx * reach * 0.7, gz = p.z + fz * reach * 0.7;
+      this.particles.ring(gx, 0.15, gz, 26, 0xd8c8a8, 6, 0.4, 0.4);
+      this.particles.burst(gx, 0.2, gz, 14, 0xb0a898, 4, 0.4, 0.5, -8);
+      this.debris.spawn(gx, 0.1, gz, 4, 0x6a6660, 3.5, 0.1);
+      sfx('slam');
+    }
+    if (hits) {
+      const l = Math.hypot(hx, hz) || 1;
+      // freeze-frame + camera punch in the direction of the blow sells the weight
+      this.hitstop = Math.max(this.hitstop, heavy ? 0.1 : crits ? 0.075 : 0.045);
+      this.kick(hx / l, hz / l, heavy ? 0.55 : crits ? 0.4 : 0.22);
+      this.shakeIt(heavy ? 0.4 : crits ? 0.28 : 0.14);
+      this.zoomPunch = heavy ? 0.045 : crits ? 0.03 : 0.012;
+      if (navigator.vibrate && settings.shake) navigator.vibrate(heavy ? 28 : crits ? 20 : 9);
+    } else if (heavy) { this.shakeIt(0.2); this.kick(fx, fz, 0.25); }
+  }
+
+  kick(dx, dz, amt) { if (settings.shake) { this.kickX = (this.kickX || 0) + dx * amt; this.kickZ = (this.kickZ || 0) + dz * amt; } }
+
+  // Sword trail: a glowing crescent swept in front of the player.
+  slash(x, z, face, reach, side, heavy) {
+    if (!this.slashes) this.slashes = [];
+    let sl = this.slashes.find((q) => q.t >= 1);
+    if (!sl) {
+      if (this.slashes.length >= 3) sl = this.slashes[0];
+      else {
+        const geo = this.slashGeo || (this.slashGeo = new THREE.RingGeometry(0.45, 1, 40, 1, -1.35, 2.7));
+        const mat = new THREE.ShaderMaterial({
+          transparent: true, depthWrite: false, blending: THREE.AdditiveBlending, side: THREE.DoubleSide,
+          uniforms: { uT: { value: 0 }, uDir: { value: 1 }, uColor: { value: new THREE.Color() } },
+          vertexShader: 'varying vec2 vP; void main(){ vP = position.xy; gl_Position = projectionMatrix*modelViewMatrix*vec4(position,1.0); }',
+          fragmentShader: `varying vec2 vP; uniform float uT; uniform float uDir; uniform vec3 uColor;
+            void main(){ float r = length(vP); float a = atan(vP.y, vP.x) * uDir;
+              float head = -1.35 + 2.9 * min(uT * 1.8, 1.0);
+              float trail = smoothstep(head - 1.7, head, a) * step(a, head);
+              float radial = smoothstep(0.45, 0.95, r) * smoothstep(1.0, 0.97, r);
+              float fade = 1.0 - smoothstep(0.45, 1.0, uT);
+              float v = trail * radial * fade;
+              gl_FragColor = vec4(uColor * v * 2.6 + vec3(1.0) * pow(v, 4.0) * 1.5, v); }`,
+        });
+        const mesh = new THREE.Mesh(geo, mat); mesh.rotation.x = -Math.PI / 2; mesh.renderOrder = 12; mesh.frustumCulled = false;
+        const g = new THREE.Group(); g.add(mesh);
+        sl = { g, mat, t: 1 }; this.slashes.push(sl);
+      }
+    }
+    sl.t = 0; sl.dur = heavy ? 0.3 : 0.2;
+    sl.mat.uniforms.uDir.value = side;
+    sl.mat.uniforms.uColor.value.setHex(heavy ? 0xffb060 : 0x9cc8ff);
+    sl.g.position.set(x, heavy ? 1.15 : 1.0, z);
+    sl.g.rotation.y = face - Math.PI / 2;
+    sl.g.scale.setScalar(reach * 1.08);
+    this.scene.add(sl.g);
   }
 
   playerDash(mx, mz, ml) {
@@ -833,6 +1166,7 @@ export class Game {
     this.particles.ring(p.x, 1.0, p.z, 60, 0xffd080, 11, 0.5, 0.5);
     this.particles.burst(p.x, 1, p.z, 40, 0xffa040, 6, 0.5, 0.6, 2);
     this.novaFlash = 1;
+    this.breakPropsNear(p.x, p.z, 6);
     for (const e of this.enemies) {
       if (e.dead) continue;
       const dx = e.x - p.x, dz = e.z - p.z, d = Math.hypot(dx, dz);
@@ -902,24 +1236,83 @@ export class Game {
     let diff = p.face - p.model.rotation.y;
     diff = Math.atan2(Math.sin(diff), Math.cos(diff));
     p.model.rotation.y += diff * Math.min(1, dt * 18);
-    p.anim = (p.anim || 0) + dt * (4 + ml * 8);
-    const sw = Math.sin(p.anim) * 0.6 * Math.min(1, ml);
-    u.legL.rotation.x = sw; u.legR.rotation.x = -sw;
-    u.body.position.y = Math.abs(Math.cos(p.anim)) * 0.06 * Math.min(1, ml);
-    u.cape.rotation.x = 0.15 + Math.min(1, ml) * 0.45 + Math.sin(this.time * 3) * 0.05;
-    u.armL.rotation.x = -sw * 0.5;
+    const speed = Math.hypot(p.vx, p.vz), run = Math.min(1, speed / p.speed);
+    p.anim = (p.anim || 0) + dt * (2.2 + run * 10.5);
+    const ph = p.anim, sw = Math.sin(ph) * run;
+    const ease = (cur, target, rate) => cur + (target - cur) * Math.min(1, dt * rate);
+    const breathe = Math.sin(this.time * 2.1);
+    p.hurtT = Math.max(0, (p.hurtT || 0) - dt);
+
+    // legs: stride with a little knee lift, feet planted when idle
+    u.legL.rotation.x = sw * 0.85; u.legR.rotation.x = -sw * 0.85;
+    u.legL.position.y = 0.78 + Math.max(0, Math.sin(ph + 1.2)) * 0.07 * run;
+    u.legR.position.y = 0.78 + Math.max(0, -Math.sin(ph + 1.2)) * 0.07 * run;
+
+    // torso: bob twice per stride, lean into the run, bank into turns, breathe at rest
+    let bodyY = Math.abs(Math.cos(ph)) * 0.07 * run + breathe * 0.012 * (1 - run);
+    let leanX = run * 0.16, twist = Math.sin(ph) * 0.12 * run, leanZ = -diff * 0.25 * run;
+    let armRx = -sw * 0.7 + 0.05, armRz = 0.08, armLx = sw * 0.6 - 0.25 - (1 - run) * 0.1, armLz = -0.12;
+    let headY = 0, headX = breathe * 0.02;
+
     if (p.swing > 0) {
-      const t = 1 - p.swing / 0.26;
-      const e = t < 0.3 ? t / 0.3 : 1;
-      u.armR.rotation.x = -1.2 * (1 - e) - 0.3;
-      u.armR.rotation.z = 0;
-      u.armR.rotation.y = 0;
-      u.body.rotation.y = p.swingSide * (1.2 - e * 2.4) * 0.6;
-    } else {
-      u.armR.rotation.x += (sw * 0.5 - u.armR.rotation.x) * Math.min(1, dt * 10);
-      u.body.rotation.y *= 1 - Math.min(1, dt * 10);
+      const t = 1 - p.swing / p.swingDur;                // 0 → 1 over the swing
+      const side = p.swingSide;
+      if (p.heavy) {
+        // overhead finisher: rear back, hop, slam down, hold the follow-through
+        const wind = Math.min(1, t / 0.38), strike = Math.min(1, Math.max(0, (t - 0.38) / 0.16)), settle = Math.max(0, (t - 0.54) / 0.46);
+        const sEase = strike * strike * (3 - 2 * strike);
+        armRx = -2.9 * wind + 2.7 * sEase + 0.25 * settle * (1 - settle) * 4 * 0.3;
+        armRz = 0.25 * (1 - sEase);
+        leanX = -0.3 * wind + 0.75 * sEase - 0.3 * settle;
+        bodyY += Math.sin(Math.min(1, t / 0.5) * Math.PI) * 0.22;
+        twist = 0.25 * (1 - sEase);
+        armLx = -0.9 * wind + 0.5 * sEase;
+        headX = -0.25 * wind + 0.3 * sEase;
+      } else {
+        // horizontal slash: coil the hips, whip the blade across, recover
+        const wind = Math.min(1, t / 0.22), strike = Math.min(1, Math.max(0, (t - 0.22) / 0.3)), settle = Math.max(0, (t - 0.52) / 0.48);
+        const sEase = 1 - (1 - strike) * (1 - strike);
+        twist = side * (0.95 * wind - 1.9 * sEase + 0.95 * settle * settle);
+        armRx = -1.25 + 0.2 * Math.sin(sEase * Math.PI);
+        armRz = side * (-0.5 * wind + 1.0 * sEase) * 0.6 + 0.1;
+        leanX = 0.12 + 0.2 * Math.sin(sEase * Math.PI);
+        armLx = -0.6; armLz = -0.3;
+      }
+    } else if (p.dashing > 0) {
+      leanX = 0.7; armRx = 0.9; armLx = 0.9; bodyY -= 0.12;
+      u.legL.rotation.x = 0.9; u.legR.rotation.x = -0.5;
+    } else if (p.hurtT > 0) {
+      const k = p.hurtT / 0.3;
+      leanX = -0.4 * k; armLx = -1.3 * k; headX = -0.3 * k;   // flinch back behind the shield
     }
-    u.blade.material.emissiveIntensity = 0.25 + (p.swing > 0 ? 1.5 : 0) + Math.sin(this.time * 2) * 0.1;
+
+    // head glances toward the current threat
+    if (this.lookAt) {
+      let a = Math.atan2(this.lookAt.x - p.x, this.lookAt.z - p.z) - p.model.rotation.y - u.body.rotation.y;
+      a = Math.atan2(Math.sin(a), Math.cos(a));
+      headY = Math.max(-0.9, Math.min(0.9, a));
+    }
+
+    const fast = p.swing > 0 ? 40 : 14;
+    u.body.position.y = ease(u.body.position.y, bodyY, 20);
+    u.body.rotation.x = ease(u.body.rotation.x, leanX, fast);
+    u.body.rotation.y = ease(u.body.rotation.y, twist, fast);
+    u.body.rotation.z = ease(u.body.rotation.z, leanZ, 8);
+    u.armR.rotation.x = ease(u.armR.rotation.x, armRx, fast);
+    u.armR.rotation.z = ease(u.armR.rotation.z, armRz, fast);
+    u.armL.rotation.x = ease(u.armL.rotation.x, armLx, 14);
+    u.armL.rotation.z = ease(u.armL.rotation.z, armLz, 14);
+    u.head.rotation.y = ease(u.head.rotation.y, headY, 9);
+    u.head.rotation.x = ease(u.head.rotation.x, headX, 12);
+
+    // cape: a damped spring dragged by movement, so it billows, overshoots and settles
+    const capeTarget = 0.12 + run * 0.75 + (p.dashing > 0 ? 0.5 : 0) + Math.sin(this.time * 3.1) * 0.04 + Math.sin(ph * 2) * 0.05 * run;
+    p.capeV = (p.capeV || 0) + ((capeTarget - (p.capeA || 0)) * 70 - (p.capeV || 0) * 7) * dt;
+    p.capeA = (p.capeA || 0) + p.capeV * dt;
+    u.cape.rotation.x = Math.max(0, Math.min(1.5, p.capeA));
+    u.cape.rotation.z = -leanZ * 0.8;
+
+    u.blade.material.emissiveIntensity = 0.25 + (p.swing > 0 ? (p.heavy ? 3 : 1.6) : 0) + Math.sin(this.time * 2) * 0.1;
     p.model.visible = !(p.inv > 0 && p.dashing <= 0 && Math.floor(this.time * 20) % 2 === 0);
   }
 
@@ -929,6 +1322,7 @@ export class Game {
       const e = this.enemies[i];
       if (e.dead) continue;
       const dx = p.x - e.x, dz = p.z - e.z, dist = Math.hypot(dx, dz);
+      if (!e.aggro && dist > 30) { e.model.visible = false; continue; } // asleep: no AI, no draw
       const nx = dx / (dist || 1), nz = dz / (dist || 1);
       if (!e.aggro && dist < 11 && (dist < 4 || d.los(e.x, e.z, p.x, p.z))) { e.aggro = true; if (Math.random() < 0.4) sfx('growl'); }
       e.cd -= dt; e.t -= dt; e.hitT -= dt;
@@ -1046,21 +1440,38 @@ export class Game {
         const d2 = sx * sx + sz * sz;
         if (d2 < rr * rr && d2 > 0.0001) {
           const dd = Math.sqrt(d2), push = (rr - dd) * 0.5 / dd;
-          if (!e.boss) { e.kx += sx * push * 8; e.kz += sz * push * 8; }
-          if (!o.boss) { o.kx -= sx * push * 8; o.kz -= sz * push * 8; }
+          const tm = e.mass + o.mass;
+          if (!e.boss) { e.x += sx * push * 2 * o.mass / tm; e.z += sz * push * 2 * o.mass / tm; }
+          if (!o.boss) { o.x -= sx * push * 2 * e.mass / tm; o.z -= sz * push * 2 * e.mass / tm; }
         }
       }
       // player body block
       if (dist < e.r + p.r && dist > 0.001) {
         const push = (e.r + p.r - dist);
-        if (!e.boss) { e.x -= nx * push * 0.5; e.z -= nz * push * 0.5; }
-        this.move(p, nx * push * 0.5, nz * push * 0.5);
+        const share = e.boss ? 0 : 1 / (1 + e.mass);
+        e.x -= nx * push * share; e.z -= nz * push * share;
+        this.move(p, nx * push * (1 - share), nz * push * (1 - share));
       }
 
       const busy = e.state === 'windup' || e.state === 'lunge' || e.state === 'charge' || e.state === 'slam' || e.state === 'intro';
       const sp = busy ? 0 : e.speed * (e.state === 'recover' ? 0.3 : 1);
-      this.move(e, (mvx * sp + e.kx) * dt, (mvz * sp + e.kz) * dt, fly);
-      e.kx *= Math.pow(0.0005, dt); e.kz *= Math.pow(0.0005, dt);
+      // steering velocity eases toward the wanted velocity at a rate set by grip (flyers ignore the floor)
+      const grip = fly ? 12 : this.grip;
+      const ks = 1 - Math.exp(-dt * grip);
+      e.vx += (mvx * sp - e.vx) * ks; e.vz += (mvz * sp - e.vz) * ks;
+      const kSpeed = Math.hypot(e.kx, e.kz);
+      if (this.move(e, (e.vx + e.kx) * dt, (e.vz + e.kz) * dt, fly) && kSpeed > 7 && !e.boss) {
+        // knocked into a wall: bounce back with energy loss and take impact damage
+        const vn = e.kx * this.hitNX + e.kz * this.hitNZ;
+        if (vn < -6) {
+          e.kx -= 1.45 * vn * this.hitNX; e.kz -= 1.45 * vn * this.hitNZ;
+          this.particles.burst(e.x - this.hitNX * e.r, 0.8, e.z - this.hitNZ * e.r, 10, 0xb0a898, 4, 0.35, 0.4, -6);
+          this.shakeIt(0.15);
+          this.damageEnemy(e, -vn * 0.9 * e.mass, 0, 0, false, 'thorns');
+          if (e.dead) continue;
+        }
+      }
+      const kd = Math.exp(-dt * Math.max(2.2, grip * 0.55)); e.kx *= kd; e.kz *= kd;
       if (mvx || mvz) e.face = Math.atan2(mvx, mvz);
       if (e.aggro && (busy || (e.def.ai !== 'melee' && dist < 10))) e.face = Math.atan2(nx, nz);
       this.animateEnemy(e, dt, Math.hypot(mvx, mvz) * sp);
@@ -1124,7 +1535,7 @@ export class Game {
           const sx = e.x + Math.cos(a) * 2.8, sz = e.z + Math.sin(a) * 2.8;
           if (this.blocked(sx, sz, 0.5, false)) continue;
           const m = this.spawnEnemy(roster[Math.floor(Math.random() * roster.length)], sx, sz);
-          m.aggro = true;
+          m.aggro = true; m.spawnT = 0;
           this.particles.burst(sx, 0.5, sz, 25, e.def.pcolor, 5, 0.4, 0.6, 2);
         }
         sfx('growl');
@@ -1145,6 +1556,26 @@ export class Game {
 
   animateEnemy(e, dt, speed) {
     const m = e.model, u = m.userData;
+    const cdx = e.x - this.camTarget.x, cdz = e.z - this.camTarget.z;
+    const vis = cdx * cdx + cdz * cdz < 26 * 26;
+    m.visible = vis;
+    if (e.flash > 0 && e.mats) {
+      e.flash = Math.max(0, e.flash - dt * 7);
+      for (let i = 0; i < e.mats.length; i++) { const mt = e.mats[i]; mt.emissive.copy(mt.userData.e).lerp(WHITE, e.flash); mt.emissiveIntensity = mt.userData.ei + e.flash * (mt.userData.ei > 1 ? 0 : 1.6); }
+    }
+    if (e.bar) {
+      e.bar.t -= dt;
+      const show = e.bar.t > 0 && vis && !e.dead;
+      e.bar.bg.visible = e.bar.fill.visible = show;
+      if (show) {
+        const w = 0.9 + e.r * 0.8, by = (e.def.fly ? 2.5 : 2.0) * e.scale + 0.25;
+        // sprites are anchored on their left edge; shift left along the screen-right axis
+        const ox = -SCREEN_RIGHT.x * w / 2, oz = -SCREEN_RIGHT.y * w / 2;
+        e.bar.bg.position.set(e.x + ox, by, e.z + oz); e.bar.bg.scale.set(w, 0.11, 1);
+        e.bar.fill.position.set(e.x + ox, by, e.z + oz); e.bar.fill.scale.set(Math.max(0.001, w * e.hp / e.maxHp), 0.075, 1);
+      }
+    }
+    if (!vis) { m.position.set(e.x, 0, e.z); return; }
     m.position.set(e.x, 0, e.z);
     let diff = e.face - m.rotation.y; diff = Math.atan2(Math.sin(diff), Math.cos(diff));
     m.rotation.y += diff * Math.min(1, dt * 8);
@@ -1161,9 +1592,28 @@ export class Game {
     if (u.tents) u.tents.forEach((t, k) => { t.rotation.x = Math.sin(this.time * 3 + k) * 0.4; t.rotation.z = Math.cos(this.time * 2.5 + k) * 0.4; });
     if (u.orb) u.orb.scale.setScalar(wind ? 1.8 + Math.sin(this.time * 30) * 0.3 : 1);
     if (u.core && u.core.material) u.core.rotation.y += dt;
-    // hit squash + windup tremble
+    // posture: coil back while winding up, lunge through the strike, reel from hits, breathe at rest
+    e.recoil = Math.max(0, (e.recoil || 0) - dt * 5);
+    const striking = e.state === 'recover' && e.t > 0.28 && (e.def.ai === 'melee' || e.def.ai === 'lunger');
+    const leanT = (wind ? -0.38 : striking ? 0.55 : e.state === 'lunge' || e.state === 'charge' ? 0.5 : Math.min(1, speed) * 0.12) - e.recoil * 0.55;
+    e.lean = (e.lean || 0) + (leanT - (e.lean || 0)) * Math.min(1, dt * (striking ? 30 : 12));
+    if (!u.blob) {
+      u.body.rotation.x = e.lean;
+      u.body.rotation.z = Math.sin(e.anim) * 0.07 * Math.min(1, speed);
+      if (!u.float && !u.wL) u.body.position.y = Math.abs(Math.cos(e.anim)) * 0.06 * Math.min(1, speed) + (speed < 0.2 ? Math.sin(this.time * 2 + e.anim) * 0.015 : 0);
+    }
+    if (u.head && u.head.isGroup) { u.head.rotation.x = Math.sin(e.anim * 2) * 0.06 * Math.min(1, speed) - e.recoil * 0.4; u.head.rotation.z = e.aggro ? Math.sin(this.time * 17 + e.anim) * 0.03 : 0; }
+    if (striking && u.armR) u.armR.rotation.x = 0.9;
+    if (u.legs) {
+      // alternating tetrapod gait: diagonal leg sets swing and lift in opposite phase
+      const g = Math.min(1, speed + 0.08);
+      for (let k = 0; k < u.legs.length; k++) { const phs = e.anim * 2.4 + ((k + (k >= 4 ? 1 : 0)) % 2) * Math.PI; u.legs[k].rotation.x = Math.sin(phs) * 0.4 * g; u.legs[k].rotation.z = Math.max(0, Math.cos(phs)) * 0.22 * g * (k < 4 ? -1 : 1); }
+      u.body.position.y = wind ? -0.12 : Math.sin(e.anim * 4.8) * 0.03 * g;
+    }
+    // spawn-in rise, hit squash
+    e.spawnT = Math.min(1, (e.spawnT === undefined ? 1 : e.spawnT) + dt * 3.5);
     const hs = e.hitT > 0 ? 1 + e.hitT * 1.5 : 1;
-    const base = e.scale;
+    const base = e.scale * (0.25 + 0.75 * e.spawnT * (2 - e.spawnT));
     m.scale.set(base * hs, base * (2 - hs), base * hs);
     if (wind) { m.position.x += Math.sin(this.time * 60) * 0.05; }
     if (e.boss && Math.random() < 0.3) this.particles.emit(e.x + rnd(-1, 1), rnd(0.5, 3), e.z + rnd(-1, 1), 0, 1, 0, ...this.hexRGB(e.def.pcolor), 0.4, 0.8, 0.5, 0.97);
@@ -1173,6 +1623,7 @@ export class Game {
 
   updateWorld(dt, live) {
     const p = this.player;
+    if (!this.projPool) this.projPool = [];
     // projectiles
     for (const pr of this.projectiles) {
       pr.life -= dt;
@@ -1180,14 +1631,79 @@ export class Game {
       pr.mesh.position.set(pr.x, 1.1, pr.z);
       this.particles.emit(pr.x, 1.1, pr.z, rnd(-0.3, 0.3), rnd(-0.3, 0.3), rnd(-0.3, 0.3), pr.color.r, pr.color.g, pr.color.b, 0.45, 0.25, 0, 0.9);
       const cell = this.dungeon.get(Math.floor(pr.x / TILE), Math.floor(pr.z / TILE));
-      if (cell === WALL) { pr.life = 0; this.particles.burst(pr.x, 1.1, pr.z, 10, pr.color.getHex(), 4, 0.3, 0.3, -6); continue; }
+      if (cell === WALL) { pr.life = 0; this.particles.burst(pr.x, 1.1, pr.z, 10, pr.hex, 4, 0.3, 0.3, -6); continue; }
+      // props give real cover: shots stop on them and shatter the fragile ones
+      for (let oi = 0; oi < this.obstacles.length; oi++) {
+        const o = this.obstacles[oi];
+        const odx = pr.x - o.x, odz = pr.z - o.z, orr = o.r + pr.r * 0.5;
+        if (odx * odx + odz * odz < orr * orr) {
+          pr.life = 0; this.particles.burst(pr.x, 1.1, pr.z, 10, pr.hex, 4, 0.3, 0.3, -6);
+          if (o.breakable) { const pl = Math.hypot(pr.vx, pr.vz) || 1; this.breakProp(o, pr.vx / pl, pr.vz / pl); }
+          break;
+        }
+      }
+      if (pr.life <= 0) continue;
       if (live && pr.owner === 'enemy' && p && (p.x - pr.x) ** 2 + (p.z - pr.z) ** 2 < (pr.r + p.r) ** 2) {
         pr.life = 0; this.hurtPlayer(pr.dmg, pr.x - pr.vx * 0.05, pr.z - pr.vz * 0.05);
-        this.particles.burst(pr.x, 1.1, pr.z, 14, pr.color.getHex(), 5, 0.35, 0.4, -6);
+        this.particles.burst(pr.x, 1.1, pr.z, 14, pr.hex, 5, 0.35, 0.4, -6);
       }
     }
     if (this.projectiles.some((pr) => pr.life <= 0)) {
-      this.projectiles = this.projectiles.filter((pr) => { if (pr.life <= 0) { this.world.remove(pr.mesh); return false; } return true; });
+      this.projectiles = this.projectiles.filter((pr) => { if (pr.life <= 0) { this.world.remove(pr.mesh); this.projPool.push(pr.mesh); return false; } return true; });
+    }
+    this.debris.update(dt, this.dungeon);
+    if (this.slashes) for (const sl of this.slashes) {
+      if (sl.t >= 1) continue;
+      sl.t = Math.min(1, sl.t + dt / sl.dur);
+      sl.mat.uniforms.uT.value = sl.t;
+      if (sl.t >= 1) this.scene.remove(sl.g);
+    }
+    // dying enemies crumple and flash out instead of just vanishing
+    for (const dy of this.dying) {
+      dy.t += dt / 0.24;
+      const k = Math.min(1, dy.t), s0 = dy.s;
+      dy.model.scale.set(s0 * (1 + k * 0.35), s0 * Math.max(0.04, 1 - k * k), s0 * (1 + k * 0.35));
+      dy.model.position.x += dy.kx * dt * 5; dy.model.position.z += dy.kz * dt * 5;
+      dy.model.rotation.x = -k * 0.5;
+      if (dy.mats) for (const mt of dy.mats) { mt.emissive.setRGB(1, 1, 1); mt.emissiveIntensity = 1.5 * (1 - k); }
+      if (k >= 1) { dy.done = true; this.world.remove(dy.model); if (dy.mats) for (const mt of dy.mats) mt.dispose(); }
+    }
+    if (this.dying.length && this.dying[0].done) this.dying = this.dying.filter((dy) => !dy.done);
+    // spike traps: idle → warning glow → spikes up → retract
+    for (const tr of this.traps) {
+      tr.t += dt;
+      if (tr.t > 3.2) { tr.t -= 3.2; tr.hit = false; tr.warned = false; }
+      const warn = tr.t > 1.8 && tr.t <= 2.4, up = tr.t > 2.4 && tr.t <= 3.0;
+      tr.up += ((up ? 1 : 0) - tr.up) * Math.min(1, dt * (up ? 30 : 6));
+      tr.spikes.position.y = -1 + tr.up;
+      tr.rimMat.emissiveIntensity = warn ? 2 + Math.sin(this.time * 30) * 1.5 : up ? 1.2 : 0;
+      if (!live || !p) continue;
+      const near = Math.abs(p.x - tr.x) < 12 && Math.abs(p.z - tr.z) < 12;
+      if (warn && !tr.warned && near) { tr.warned = true; sfx('telegraph'); }
+      if (up && !tr.hit) {
+        tr.hit = true;
+        if (near) sfx('swing');
+        if (Math.abs(p.x - tr.x) < 0.9 + p.r * 0.5 && Math.abs(p.z - tr.z) < 0.9 + p.r * 0.5) this.hurtPlayer(10 + this.floor * 2, tr.x, tr.z);
+        for (const e of this.enemies) {
+          if (e.dead || e.def.fly || e.boss) continue;
+          if (Math.abs(e.x - tr.x) < 0.9 + e.r * 0.5 && Math.abs(e.z - tr.z) < 0.9 + e.r * 0.5) this.damageEnemy(e, 18 + this.floor * 2, 0, 0, false, 'thorns');
+        }
+      }
+    }
+    // shrine
+    if (this.shrine) {
+      const sh = this.shrine;
+      sh.crystal.rotation.y += dt * (sh.used ? 0.3 : 1.2);
+      sh.crystal.position.y = 1.5 + Math.sin(this.time * 2) * 0.1;
+      if (!sh.used && Math.random() < 0.3) this.particles.emit(sh.x + rnd(-0.5, 0.5), 0.8, sh.z + rnd(-0.5, 0.5), 0, rnd(0.6, 1.4), 0, 0.3, 1, 0.55, 0.25, 1, 0, 0.98);
+      if (live && p && !sh.used && (p.x - sh.x) ** 2 + (p.z - sh.z) ** 2 < 4.4 && p.hp < p.maxHp) {
+        sh.used = true;
+        p.hp = Math.min(p.maxHp, p.hp + p.maxHp * 0.5);
+        sh.crystalMat.emissiveIntensity = 0.25; sh.glow.i = 1.5;
+        sfx('potion'); sfx('levelup');
+        this.particles.burst(p.x, 1.2, p.z, 50, 0x40ff90, 4, 0.45, 1.1, 3);
+        this.ui.toast('Şifa çeşmesi yaralarını sardı');
+      }
     }
     // decals
     for (const dc of this.decals) {
@@ -1267,7 +1783,7 @@ export class Game {
       u.vortex.material.uniforms.uOpen.value += (target - u.vortex.material.uniforms.uOpen.value) * Math.min(1, dt * 2);
       u.runeRing.rotation.z += dt * 0.5;
       if (this.portalOpen && Math.random() < 0.5 * pf) {
-        const a = Math.random() * 6.28, c = new THREE.Color(this.biome.torch);
+        const a = Math.random() * 6.28, c = this.torches.length ? this.torches[0].color : WHITE;
         this.particles.emit(this.portal.position.x + Math.cos(a) * 1.3, 0.3, this.portal.position.z + Math.sin(a) * 1.3, -Math.cos(a) * 0.6, rnd(1, 2.5), -Math.sin(a) * 0.6, c.r, c.g, c.b, 0.3, 1, 0, 0.98);
       }
     }
@@ -1276,14 +1792,22 @@ export class Game {
   updateLightsAndCamera(dt) {
     const p = this.player;
     const playing = (this.state === 'play' || this.state === 'dead') && p;
-    const focus = playing ? tmpV2.set(p.x, 0, p.z) : this.camTarget;
+    const focus = playing ? tmpV2.set(p.x + p.vx * 0.22, 0, p.z + p.vz * 0.22) : this.camTarget;
     if (playing) this.camTarget.lerp(focus, 1 - Math.exp(-dt * 6));
     // camera
     const ct = this.camTarget;
     let sx = 0, sy = 0;
     if (this.shake > 0) { this.shake = Math.max(0, this.shake - dt * 2.2); const s = this.shake * this.shake * 0.8; sx = rnd(-s, s); sy = rnd(-s, s); }
-    this.camera.position.set(ct.x + ISO.x * 50 + sx, ISO.y * 50 + sy, ct.z + ISO.z * 50 - sx);
-    this.camera.lookAt(ct.x + sx, sy, ct.z - sx);
+    const kd = Math.exp(-dt * 14);
+    this.kickX = (this.kickX || 0) * kd; this.kickZ = (this.kickZ || 0) * kd;
+    const kx = this.kickX, kz = this.kickZ;
+    this.camera.position.set(ct.x + ISO.x * 50 + sx + kx, ISO.y * 50 + sy, ct.z + ISO.z * 50 - sx + kz);
+    this.camera.lookAt(ct.x + sx + kx, sy, ct.z - sx + kz);
+    if (this.zoomPunch > 0.0005 || this.camera.zoom !== 1) {
+      this.zoomPunch = (this.zoomPunch || 0) * Math.exp(-dt * 12);
+      this.camera.zoom = 1 + this.zoomPunch; this.camera.updateProjectionMatrix();
+      if (this.zoomPunch < 0.0005) { this.zoomPunch = 0; this.camera.zoom = 1; this.camera.updateProjectionMatrix(); }
+    }
     if (playing) this.cutaway.uPlayer.value.set(p.x, 1.0, p.z);
     this.cutaway.uCamDir.value.copy(ISO);
 
@@ -1326,6 +1850,8 @@ export class Game {
   }
 
   render() {
+    this.frame = (this.frame || 0) + 1;
+    if (this.frame % this.shadowEvery === 0 || this.shadowDirty) { this.renderer.shadowMap.needsUpdate = true; this.shadowDirty = false; }
     if (this.composer) {
       if (this.finalPass) {
         this.finalPass.uniforms.uTime.value = this.time;

@@ -109,8 +109,10 @@ const SFX = {
   },
   hit() {
     const t = ctx.currentTime;
-    tone(t, 0.18, { f0: R(140, 170), f1: 45, gain: 0.7, wet: 0.2 });
-    noise(t, 0.08, { type: 'lowpass', f0: 4000, f1: 600, gain: 0.5, wet: 0.25 });
+    tone(t, 0.2, { f0: R(150, 190), f1: 42, gain: 0.85, wet: 0.2 });
+    noise(t, 0.09, { type: 'lowpass', f0: 5000, f1: 500, gain: 0.6, wet: 0.25 });
+    noise(t, 0.025, { type: 'highpass', f0: 3500, gain: 0.35, attack: 0.001, wet: 0.1 });
+    noise(t + 0.01, 0.12, { type: 'bandpass', f0: R(700, 1100), f1: 300, q: 2, gain: 0.3, wet: 0.2 });
     tone(t, 0.25, { type: 'triangle', f0: R(900, 1300), f1: R(700, 900), gain: 0.06, wet: 0.4 });
   },
   crit() {
@@ -118,6 +120,13 @@ const SFX = {
     SFX.hit();
     tone(t, 0.5, { type: 'sine', f0: 2200, f1: 1800, gain: 0.08, wet: 0.6 });
     tone(t, 0.5, { type: 'sine', f0: 3300, f1: 2900, gain: 0.05, wet: 0.6 });
+  },
+  slam() {
+    const t = ctx.currentTime;
+    tone(t, 0.35, { f0: 95, f1: 30, gain: 0.9, wet: 0.35 });
+    noise(t, 0.25, { type: 'lowpass', f0: 2600, f1: 180, gain: 0.7, wet: 0.4 });
+    noise(t + 0.03, 0.5, { type: 'bandpass', f0: 500, f1: 140, q: 1.2, gain: 0.3, wet: 0.6 });
+    tone(t, 0.3, { type: 'triangle', f0: 1700, f1: 900, gain: 0.07, wet: 0.5 });
   },
   playerHurt() {
     const t = ctx.currentTime;

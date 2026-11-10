@@ -8,13 +8,16 @@ export function mulberry(seed) {
 }
 
 export class Dungeon {
-  constructor(seed, floor) {
+  constructor(seed, floor, style = 'halls') {
+    this.style = style;
     this.rand = mulberry(seed);
     const size = Math.min(40 + floor * 2, 60);
     this.w = size; this.h = size;
     this.grid = new Uint8Array(this.w * this.h);
     this.explored = new Uint8Array(this.w * this.h);
     this.rooms = [];
+    this.traps = [];
+    this.shrine = null;
     this.generate(floor);
   }
   idx(x, y) { return y * this.w + x; }
@@ -35,16 +38,24 @@ export class Dungeon {
       if (!ok) continue;
       this.rooms.push({ x, y, w, h, cx: Math.floor(x + w / 2), cy: Math.floor(y + h / 2) });
     }
-    for (const r of this.rooms) {
-      for (let j = r.y; j < r.y + r.h; j++) for (let i = r.x; i < r.x + r.w; i++) this.set(i, j, FLOOR);
-    }
+    const shapes = {
+      halls: ['rect', 'rect', 'pillars', 'octagon'],
+      caves: ['cave', 'cave', 'round', 'cave'],
+      round: ['round', 'octagon', 'round', 'pillars'],
+      organic: ['cave', 'round', 'cave', 'rect'],
+      temple: ['cross', 'octagon', 'pillars', 'cross'],
+    }[this.style] || ['rect'];
+    this.rooms.forEach((r, k) => {
+      r.shape = k === 0 ? (this.style === 'caves' || this.style === 'organic' ? 'round' : 'rect') : shapes[Math.floor(this.rand() * shapes.length)];
+      this.carveRoom(r);
+    });
     // liquid pools in bigger rooms (skip first room = spawn)
     for (let k = 1; k < this.rooms.length; k++) {
       const r = this.rooms[k];
-      if (r.w >= 8 && r.h >= 8 && this.rand() < 0.65) {
+      if (r.w >= 8 && r.h >= 8 && r.shape !== 'pillars' && this.rand() < (this.style === 'organic' || this.style === 'caves' ? 0.8 : 0.55)) {
         const pw = this.ri(2, r.w - 5), ph = this.ri(2, r.h - 5);
         const px = this.ri(r.x + 2, r.x + r.w - pw - 2), py = this.ri(r.y + 2, r.y + r.h - ph - 2);
-        for (let j = py; j < py + ph; j++) for (let i = px; i < px + pw; i++) this.set(i, j, LIQUID);
+        for (let j = py; j < py + ph; j++) for (let i = px; i < px + pw; i++) if (this.get(i, j) === FLOOR) this.set(i, j, LIQUID);
         r.pool = { x: px, y: py, w: pw, h: ph };
       }
     }
@@ -67,7 +78,7 @@ export class Dungeon {
     }
     // start = room 0, exit = farthest room by path distance
     this.start = this.rooms[0];
-    const dist = this.bfs(this.start.cx, this.start.cy);
+    const dist = this.bfs(this.start.cx, this.start.cy, null, 9999);
     let far = this.rooms[1] || this.rooms[0], fd = -1;
     for (const r of this.rooms) {
       // keep exit tile free of liquid
@@ -75,7 +86,59 @@ export class Dungeon {
       if (d > fd && this.get(r.cx, r.cy) === FLOOR) { fd = d; far = r; }
     }
     this.exit = far;
-    this.set(far.cx, far.cy, FLOOR);
+    for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) this.set(far.cx + dx, far.cy + dy, FLOOR);
+    for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) this.set(this.start.cx + dx, this.start.cy + dy, FLOOR);
+    // drop floor pockets that cannot be reached (cave noise can leave them)
+    const reach = this.bfs(this.start.cx, this.start.cy, null, 9999);
+    for (let i = 0; i < this.grid.length; i++) if (this.grid[i] === FLOOR && reach[i] < 0) this.grid[i] = WALL;
+    // shrine: a quiet room with no pool
+    const quiet = this.rooms.filter((r) => r !== this.start && r !== far && !r.pool && this.get(r.cx, r.cy) === FLOOR);
+    if (quiet.length && this.rand() < 0.75) {
+      const r = quiet[Math.floor(this.rand() * quiet.length)];
+      r.shrine = true; this.shrine = { x: r.cx, y: r.cy };
+    }
+    // spike traps: mostly in corridors, a few inside rooms
+    const want = Math.min(3 + floor, 12);
+    for (let tries = 0; tries < 300 && this.traps.length < want; tries++) {
+      const x = this.ri(2, this.w - 3), y = this.ri(2, this.h - 3);
+      if (this.get(x, y) !== FLOOR) continue;
+      const room = this.roomAt(x, y);
+      if (room === this.start || (room && this.rand() < 0.7)) continue;
+      if (Math.abs(x - far.cx) < 3 && Math.abs(y - far.cy) < 3) continue;
+      if (this.shrine && Math.abs(x - this.shrine.x) < 2 && Math.abs(y - this.shrine.y) < 2) continue;
+      if (this.traps.some((t) => Math.abs(t.x - x) + Math.abs(t.y - y) < 3)) continue;
+      this.traps.push({ x, y });
+    }
+  }
+
+  carveRoom(r) {
+    const cx = r.x + (r.w - 1) / 2, cy = r.y + (r.h - 1) / 2, rx = r.w / 2, ry = r.h / 2;
+    const cut = Math.max(2, Math.floor(Math.min(r.w, r.h) / 3.2));
+    for (let j = r.y; j < r.y + r.h; j++) for (let i = r.x; i < r.x + r.w; i++) {
+      const u = (i - cx) / rx, v = (j - cy) / ry;
+      const li = i - r.x, lj = j - r.y, ri = r.x + r.w - 1 - i, rj = r.y + r.h - 1 - j;
+      let ok = true;
+      if (r.shape === 'round') ok = u * u + v * v <= 1.02;
+      else if (r.shape === 'cave') ok = u * u + v * v <= 0.72 + this.rand() * 0.5;
+      else if (r.shape === 'octagon') ok = li + lj >= cut && ri + lj >= cut && li + rj >= cut && ri + rj >= cut;
+      else if (r.shape === 'cross') ok = !((li < cut || ri < cut) && (lj < cut || rj < cut));
+      if (ok) this.set(i, j, FLOOR);
+    }
+    if (r.shape === 'cave') {
+      // one smoothing pass so caves have no single-cell spikes
+      for (let j = r.y; j < r.y + r.h; j++) for (let i = r.x; i < r.x + r.w; i++) {
+        let n = 0;
+        for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) if (this.get(i + dx, j + dy) === FLOOR) n++;
+        if (n >= 6) this.set(i, j, FLOOR);
+      }
+    }
+    if (r.shape === 'pillars' && r.w >= 7 && r.h >= 7) {
+      const xs = [r.x + 2, r.x + r.w - 3], ys = [r.y + 2, r.y + r.h - 3];
+      if (r.w >= 11) xs.push(r.cx);
+      if (r.h >= 11) ys.push(r.cy);
+      for (const px of xs) for (const py of ys) if (!(px === r.cx && py === r.cy)) this.grid[this.idx(px, py)] = WALL;
+    }
+    for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) this.set(r.cx + dx, r.cy + dy, FLOOR);
   }
 
   corridor(a, b) {
@@ -93,7 +156,7 @@ export class Dungeon {
     carve(x, y);
   }
 
-  bfs(sx, sy, out) {
+  bfs(sx, sy, out, maxD = 60) {
     const d = out || new Int16Array(this.w * this.h);
     d.fill(-1);
     const q = new Int32Array(this.w * this.h);
@@ -103,7 +166,7 @@ export class Dungeon {
     while (h < t) {
       const c = q[h++]; const cx = c % this.w, cy = (c / this.w) | 0;
       const nd = d[c] + 1;
-      if (nd > 60) continue;
+      if (nd > maxD) continue;
       const nb = [c - 1, c + 1, c - this.w, c + this.w];
       const nx = [cx - 1, cx + 1, cx, cx], ny = [cy, cy, cy - 1, cy + 1];
       for (let k = 0; k < 4; k++) {

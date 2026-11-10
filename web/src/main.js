@@ -21,12 +21,14 @@ function boot() {
   ui.show('menu');
   document.getElementById('loading').classList.add('done');
   setTimeout(() => document.getElementById('loading').remove(), 900);
-  let last = performance.now();
+  let last = performance.now(), frame = 0;
   const loop = (now) => {
     requestAnimationFrame(loop);
     const dt = (now - last) / 1000; last = now;
-    if (!ui.paused && game.state !== 'paused') game.update(dt);
-    game.render();
+    const frozen = ui.paused || game.state === 'paused';
+    if (!frozen) game.update(dt);
+    // nothing moves while paused: redraw rarely to save battery and heat
+    if (!frozen || (frame++ % 6) === 0) game.render();
   };
   requestAnimationFrame(loop);
 }

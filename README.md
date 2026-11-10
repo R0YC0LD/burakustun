@@ -8,10 +8,13 @@ Mobil için izometrik 3D keşif / roguelike RPG. Tamamen prosedürel: zindanlar,
 - **5 biyom / zindan stili**, 10 kat + sonsuz mod: Kadim Mahzen, Kor Mağaraları, Donmuş Salonlar, Zehirli Bataklık, Boşluk Tapınağı
 - **9 düşman türü**, her biri farklı yapay zekâ ile (yakın dövüş, okçu, atılan örümcek, bölünen balçık, şarj eden golem, ışınlanan hayalet, yelpaze ateşli göz...)
 - **5 boss**, çok fazlı saldırı desenleri (halka, spiral, çağırma, şarj, alan darbesi), %50 can altında öfke modu
+- **Fizik:** kütle ve itme tabanlı çarpışmalar, yüzey tutunması (buzda kayma), duvara savrulan düşmanlara çarpma hasarı, kırılabilir eşyalar, seken/dönen katı enkaz parçaları, eşyaların arkasına siper alma
+- **Dövüş hissi:** 3 vuruşluk kombo (ağır bitirici), vuruş duraksaması, yönlü kamera tepmesi, kılıç izi, sersemletme, titreşim
+- **Haritalar:** biyoma özel oda şekilleri (salonlar, mağaralar, yuvarlak/sekizgen odalar, haç planlı tapınaklar), sütunlu salonlar, diken tuzakları, şifa çeşmeleri
 - **15 güç (perk)**, seviye atladıkça 3'ten 1 seçim; sandıklar, altın, iksirler
 - **Grafik:** PBR malzemeler, prosedürel normal/pürüzlülük haritaları, dinamik yumuşak gölgeler, meşale gölgeleri, GTAO ortam kapatma (Ultra), HDR bloom, ACES ton eşleme, animasyonlu sıvılar (lav, zehir, buz), duvar kesme (cutaway) shader'ı
 - **Ses:** WebAudio ile gerçek zamanlı sentez — konvolüsyon yankısı, kompresör, biyoma özel üretken müzik ve ortam sesleri
-- **Optimizasyon:** birleştirilmiş zindan geometrisi (birkaç draw call), sabit ışık havuzu (shader yeniden derleme yok), dinamik çözünürlük ölçekleme, cihaz bazlı otomatik kalite
+- **Optimizasyon:** parçalara bölünmüş (chunk) zindan geometrisi ve görüş dışı ayıklama, pişirilmiş ortam gölgesi, uzak düşmanları uyutma, nesne havuzları, sabit ışık havuzu (shader yeniden derleme yok), dinamik çözünürlük ölçekleme, cihaz bazlı otomatik kalite
 - Ana menü, ayarlar (kalite, müzik/efekt sesi, sarsıntı, FPS), duraklatma, Android geri tuşu desteği
 
 > Not: Mobil WebView'da donanımsal ışın izleme (RT çekirdekleri) API'si yoktur; "Ultra RT" modu bu görünümü gerçek zamanlı gölgeler, ortam kapatma, PBR yansımalar ve bloom ile taklit eder.

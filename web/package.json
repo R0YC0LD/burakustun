@@ -6,6 +6,12 @@
     "build": "node build.mjs",
     "serve": "node build.mjs && npx --yes http-server dist -p 8080 -c-1"
   },
-  "dependencies": { "three": "0.170.0" },
-  "devDependencies": { "esbuild": "0.24.0", "@fontsource/cinzel": "5.1.0", "@fontsource/inter": "5.1.0" }
+  "dependencies": {
+    "three": "0.170.0"
+  },
+  "devDependencies": {
+    "@fontsource/grenze": "^5.3.0",
+    "@fontsource/new-rocker": "^5.3.0",
+    "esbuild": "0.24.0"
+  }
 }
