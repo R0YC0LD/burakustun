@@ -14,7 +14,7 @@ import { makePlayer, makeEnemyModel, makeProp, makeTorch, makeChest, makePortal,
 import { Particles } from './particles.js';
 import { Debris } from './debris.js';
 import { sfx, playMusic, playAmbience } from './audio.js';
-import { settings, QUALITY, meta, saveMeta } from './settings.js';
+import { settings, QUALITY, DIFFICULTY, meta, saveMeta } from './settings.js';
 
 const WALL_H = 2.6;
 const ISO = new THREE.Vector3(1, 1.05, 1).normalize();
@@ -557,8 +557,9 @@ export class Game {
   spawnEnemy(type, x, z, opts = {}) {
     const def = ENEMY_DEFS[type];
     const f = this.floor || 1;
-    const hpMul = 1 + 0.24 * (f - 1);
-    const dmgMul = 1 + 0.12 * (f - 1);
+    const diff = DIFFICULTY[settings.difficulty] || DIFFICULTY.normal;
+    const hpMul = (1 + 0.24 * (f - 1)) * diff.hp;
+    const dmgMul = (1 + 0.12 * (f - 1)) * diff.dmg;
     const model = makeEnemyModel(type, this.biome.id);
     model.position.set(x, 0, z);
     this.prepModel(model);
@@ -621,10 +622,11 @@ export class Game {
     model.position.set(x, 0, z);
     this.world.add(model);
     const f = this.floor;
-    const mul = 1 + 0.25 * Math.floor((f - 1) / 2);
+    const diff = DIFFICULTY[settings.difficulty] || DIFFICULTY.normal;
+    const mul = (1 + 0.25 * Math.floor((f - 1) / 2)) * diff.hp;
     const e = {
       type, boss: true, def: { ...bd, ai: 'boss', color: bd.pcolor, pcolor: bd.pcolor, pspeed: 9, death: 'explode', xp: 120, fly: type === 'frostqueen' || type === 'overseer' },
-      model, x, z, vx: 0, vz: 0, r: bd.r, hp: bd.hp * mul, maxHp: bd.hp * mul, dmg: bd.dmg * (1 + 0.1 * (f - 1)), speed: bd.speed,
+      model, x, z, vx: 0, vz: 0, r: bd.r, hp: bd.hp * mul, maxHp: bd.hp * mul, dmg: bd.dmg * (1 + 0.1 * (f - 1)) * diff.dmg, speed: bd.speed,
       state: 'intro', t: 1.8, cd: 2, anim: 0, aggro: true, face: 0, hitT: 0, scale: bd.scale, kx: 0, kz: 0, phase: 0, pattern: 0, mass: 20, flash: 0, mats: model.userData.flashMats,
     };
     this.enemies.push(e);
@@ -656,7 +658,7 @@ export class Game {
     this.player = {
       model, x: 0, z: 0, r: 0.42, face: 0, vx: 0, vz: 0,
       hp: 100, maxHp: 100, dmg: 18, attackCd: 0.42, speed: 6.2, crit: 0.08, critMult: 2.0, reach: 2.5,
-      dashCd: 1.5, novaCd: 9, novaDmg: 45, lifesteal: 0, regen: 0, armor: 0, thorns: 0, potions: 2, potionPow: 1, goldMult: 1, magnet: 3,
+      dashCd: 1.5, novaCd: 9, novaDmg: 45, lifesteal: 0, regen: 0, armor: 0, thorns: 0, potions: (DIFFICULTY[settings.difficulty] || DIFFICULTY.normal).potions, potionPow: 1, goldMult: 1, magnet: 3,
       tAttack: 0, tDash: 0, tNova: 0, dashing: 0, inv: 0, swing: 0, swingSide: 1, level: 1, xp: 0, xpNext: 30, gold: 0, stepT: 0, perks: [],
     };
     this.enterFloor(1);
@@ -1000,7 +1002,9 @@ export class Game {
     if (target && p.swing <= 0 && !moving && td < 30) p.face = Math.atan2(target.x - p.x, target.z - p.z);
 
     // actions
-    if (inp.attack && p.tAttack <= 0) this.playerAttack(target, td);
+    const auto = settings.autoAttack && target && td < (p.reach + target.r + 0.3) ** 2 && p.dashing <= 0;
+    if ((inp.attack || auto) && p.tAttack <= 0) this.playerAttack(target, td);
+    if (settings.autoPotion && p.potions > 0 && p.hp < p.maxHp * 0.25 && this.time - (p.lastPotion || -9) > 1.5) { p.lastPotion = this.time; this.drinkPotion(); this.ui.toast('İksir otomatik içildi'); }
     if (p.pendingHit) { p.pendingHit.t -= dt; if (p.pendingHit.t <= 0) { const h = p.pendingHit.heavy; p.pendingHit = null; this.resolveHit(h); } }
     if (inp.dash) { inp.dash = false; if (p.tDash <= 0) this.playerDash(mx, mz, ml); }
     if (inp.nova) { inp.nova = false; if (p.tNova <= 0) this.playerNova(); }
@@ -1683,7 +1687,7 @@ export class Game {
       if (up && !tr.hit) {
         tr.hit = true;
         if (near) sfx('swing');
-        if (Math.abs(p.x - tr.x) < 0.9 + p.r * 0.5 && Math.abs(p.z - tr.z) < 0.9 + p.r * 0.5) this.hurtPlayer(10 + this.floor * 2, tr.x, tr.z);
+        if (Math.abs(p.x - tr.x) < 0.9 + p.r * 0.5 && Math.abs(p.z - tr.z) < 0.9 + p.r * 0.5) this.hurtPlayer((10 + this.floor * 2) * (DIFFICULTY[settings.difficulty] || DIFFICULTY.normal).dmg, tr.x, tr.z);
         for (const e of this.enemies) {
           if (e.dead || e.def.fly || e.boss) continue;
           if (Math.abs(e.x - tr.x) < 0.9 + e.r * 0.5 && Math.abs(e.z - tr.z) < 0.9 + e.r * 0.5) this.damageEnemy(e, 18 + this.floor * 2, 0, 0, false, 'thorns');

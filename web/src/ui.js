@@ -10,6 +10,11 @@ const tmp = new THREE.Vector3();
 
 export const input = { mx: 0, my: 0, attack: false, dash: false, nova: false, potion: false };
 
+const BTN_IDS = ['bAttack', 'bDash', 'bNova', 'bPotion'];
+const BASE = { bAttack: 78, bDash: 54, bNova: 54, bPotion: 46 };
+const NAMES = { bAttack: 'Saldırı', bDash: 'Atılma', bNova: 'Nova', bPotion: 'İksir', stick: 'Joystick' };
+const FALLBACK = { bAttack: { x: 0.92, y: 0.82 }, bDash: { x: 0.81, y: 0.86 }, bNova: { x: 0.92, y: 0.6 }, bPotion: { x: 0.82, y: 0.68 } };
+
 export class UI {
   constructor() {
     mountIcons();
@@ -53,6 +58,22 @@ export class UI {
     $('volMusic').addEventListener('input', (e) => { settings.music = +e.target.value; saveSettings(); applyVolumes(); });
     $('volSfx').addEventListener('input', (e) => { settings.sfx = +e.target.value; saveSettings(); applyVolumes(); });
     $('chkShake').addEventListener('change', (e) => { settings.shake = e.target.checked; saveSettings(); });
+    document.querySelectorAll('[data-d]').forEach((b) => b.addEventListener('click', () => { sfx('click'); settings.difficulty = b.dataset.d; saveSettings(); this.refreshSettings(); }));
+    const tog = (id, key, after) => $(id).addEventListener('change', (e) => { settings[key] = e.target.checked; saveSettings(); if (after) after(); });
+    tog('chkAuto', 'autoAttack'); tog('chkPotion', 'autoPotion'); tog('chkStick', 'fixedStick', () => this.applyLayout());
+    $('rngBtn').addEventListener('input', (e) => { settings.btnScale = +e.target.value; saveSettings(); this.applyLayout(); });
+    $('rngOpa').addEventListener('input', (e) => { settings.btnOpacity = +e.target.value; saveSettings(); this.applyLayout(); });
+    bind('btnLayout', () => this.openEditor());
+    bind('edDone', () => this.closeEditor());
+    bind('edReset', () => { settings.layout = null; settings.stickPos = null; settings.btnScale = 1; saveSettings(); this.applyLayout(); this.selectEd(null); this.refreshSettings(); });
+    $('edSize').addEventListener('input', (e) => {
+      if (!this.edSel) return;
+      if (this.edSel.id === 'stick') return;
+      this.ensureLayout(); settings.layout[this.edSel.id].s = +e.target.value; saveSettings(); this.applyLayout();
+    });
+    this.setupEditorDrag();
+    window.addEventListener('resize', () => this.applyLayout());
+    this.applyLayout();
     $('chkFps').addEventListener('change', (e) => { settings.fps = e.target.checked; saveSettings(); $('fps').classList.toggle('hidden', !settings.fps); });
   }
 
@@ -60,10 +81,109 @@ export class UI {
     document.querySelectorAll('[data-q]').forEach((b) => b.classList.toggle('on', b.dataset.q === settings.quality));
     $('volMusic').value = settings.music; $('volSfx').value = settings.sfx;
     $('chkShake').checked = settings.shake; $('chkFps').checked = settings.fps;
+    document.querySelectorAll('[data-d]').forEach((b) => b.classList.toggle('on', b.dataset.d === settings.difficulty));
+    $('chkAuto').checked = settings.autoAttack; $('chkPotion').checked = settings.autoPotion; $('chkStick').checked = settings.fixedStick;
+    $('rngBtn').value = settings.btnScale; $('rngOpa').value = settings.btnOpacity;
     $('fps').classList.toggle('hidden', !settings.fps);
     $('menuStats').innerHTML = meta.runs
       ? `En derin kat: <b>${meta.bestFloor}</b> · En yüksek skor: <b>${meta.bestScore}</b> · Zafer: <b>${meta.wins}</b>`
       : 'Derinlikler seni bekliyor, gezgin.';
+  }
+
+  // ---- adjustable controls -------------------------------------------------
+  stickCenter() {
+    const sp = settings.stickPos || { x: 0.14, y: 0.72 };
+    return { x: sp.x * window.innerWidth, y: sp.y * window.innerHeight };
+  }
+
+  // Snapshot where the buttons currently sit so they can be moved individually from there.
+  ensureLayout() {
+    if (settings.layout) return;
+    const L = {};
+    for (const id of BTN_IDS) {
+      const r = $(id).getBoundingClientRect();
+      const visible = r.width > 0;
+      L[id] = visible
+        ? { x: (r.left + r.width / 2) / window.innerWidth, y: (r.top + r.height / 2) / window.innerHeight, s: settings.btnScale }
+        : { ...FALLBACK[id], s: settings.btnScale };
+    }
+    settings.layout = L;
+  }
+
+  applyLayout() {
+    const root = document.documentElement.style;
+    root.setProperty('--btnScale', settings.btnScale);
+    root.setProperty('--btnOpacity', settings.btnOpacity);
+    const custom = !!settings.layout;
+    document.querySelector('.actions').classList.toggle('customized', custom);
+    for (const id of BTN_IDS) {
+      const el = $(id);
+      el.classList.toggle('custom', custom);
+      if (custom) {
+        const c = settings.layout[id] || { ...FALLBACK[id], s: 1 };
+        const size = el.offsetWidth || BASE[id];
+        el.style.left = (c.x * window.innerWidth - size / 2) + 'px';
+        el.style.top = (c.y * window.innerHeight - size / 2) + 'px';
+        el.style.scale = c.s;
+      } else { el.style.left = el.style.top = ''; el.style.scale = ''; }
+    }
+    const st = $('stick');
+    st.classList.toggle('fixed', settings.fixedStick);
+    if (settings.fixedStick || this.editing) { const c = this.stickCenter(); st.style.left = c.x + 'px'; st.style.top = c.y + 'px'; }
+  }
+
+  openEditor() {
+    this.editorFrom = this.settingsFrom;
+    this.hudWasHidden = $('hud').classList.contains('hidden');
+    $('settings').classList.add('hidden'); $('menu').classList.add('hidden'); $('pause').classList.add('hidden');
+    $('hud').classList.remove('hidden');
+    this.editing = true; document.body.classList.add('editing');
+    $('editor').classList.remove('hidden');
+    this.ensureLayout(); saveSettings();
+    this.applyLayout(); this.selectEd(null);
+  }
+
+  closeEditor() {
+    this.editing = false; document.body.classList.remove('editing');
+    $('editor').classList.add('hidden');
+    this.selectEd(null);
+    saveSettings(); this.applyLayout();
+    if (this.hudWasHidden) $('hud').classList.add('hidden');
+    $('settings').classList.remove('hidden');
+    this.refreshSettings();
+  }
+
+  selectEd(el) {
+    document.querySelectorAll('.sel').forEach((n) => n.classList.remove('sel'));
+    this.edSel = el;
+    const size = $('edSize');
+    if (!el) { $('edSel').textContent = 'Bir tuşa dokun'; size.disabled = true; return; }
+    el.classList.add('sel');
+    $('edSel').textContent = NAMES[el.id] + (el.id === 'stick' ? ' (konum)' : ' boyutu');
+    size.disabled = el.id === 'stick';
+    if (el.id !== 'stick') size.value = settings.layout[el.id].s;
+  }
+
+  setupEditorDrag() {
+    const clamp = (v) => Math.max(0.04, Math.min(0.96, v));
+    [...BTN_IDS, 'stick'].forEach((id) => {
+      const el = $(id);
+      let drag = false;
+      el.addEventListener('pointerdown', (e) => {
+        if (!this.editing) return;
+        e.preventDefault(); e.stopPropagation();
+        drag = true; el.setPointerCapture(e.pointerId); this.selectEd(el);
+      });
+      el.addEventListener('pointermove', (e) => {
+        if (!this.editing || !drag) return;
+        const x = clamp(e.clientX / window.innerWidth), y = clamp(e.clientY / window.innerHeight);
+        if (id === 'stick') { settings.stickPos = { x, y }; settings.fixedStick = true; }
+        else { settings.layout[id].x = x; settings.layout[id].y = y; }
+        this.applyLayout();
+      });
+      const up = () => { if (drag) { drag = false; saveSettings(); } };
+      el.addEventListener('pointerup', up); el.addEventListener('pointercancel', up);
+    });
   }
 
   setupTouch() {
@@ -71,11 +191,14 @@ export class UI {
     let id = null, ox = 0, oy = 0;
     const R = 60;
     const start = (t) => {
+      if (this.editing) return;
       id = t.identifier; ox = t.clientX; oy = t.clientY;
+      if (settings.fixedStick) { const c = this.stickCenter(); ox = c.x; oy = c.y; }
       base.style.left = ox + 'px'; base.style.top = oy + 'px'; base.classList.add('active');
       knob.style.transform = 'translate(-50%,-50%)';
     };
     const moveT = (t) => {
+      if (id === null) return;
       let dx = t.clientX - ox, dy = t.clientY - oy;
       const l = Math.hypot(dx, dy);
       if (l > R) { dx = dx / l * R; dy = dy / l * R; }
@@ -86,8 +209,9 @@ export class UI {
       input.mx = dx / R * k * (l > R ? 1 : 1); input.my = dy / R * k;
       const ml = Math.hypot(input.mx, input.my); if (ml > 1) { input.mx /= ml; input.my /= ml; }
     };
-    const end = () => { id = null; input.mx = 0; input.my = 0; base.classList.remove('active'); };
-    zone.addEventListener('touchstart', (e) => { e.preventDefault(); if (id === null) start(e.changedTouches[0]); }, { passive: false });
+    const end = () => { id = null; input.mx = 0; input.my = 0; base.classList.remove('active'); knob.style.transform = 'translate(-50%,-50%)'; };
+    this.stickStart = (t) => { start(t); if (id !== null) moveT(t); };
+    zone.addEventListener('touchstart', (e) => { e.preventDefault(); if (id === null) { start(e.changedTouches[0]); if (settings.fixedStick && id !== null) moveT(e.changedTouches[0]); } }, { passive: false });
     zone.addEventListener('touchmove', (e) => { e.preventDefault(); for (const t of e.changedTouches) if (t.identifier === id) moveT(t); }, { passive: false });
     zone.addEventListener('touchend', (e) => { for (const t of e.changedTouches) if (t.identifier === id) end(); });
     zone.addEventListener('touchcancel', end);
@@ -99,14 +223,14 @@ export class UI {
 
     const hold = (elId, key) => {
       const el = $(elId);
-      const on = (e) => { e.preventDefault(); input[key] = true; el.classList.add('press'); if (navigator.vibrate && key === 'attack') navigator.vibrate(8); };
+      const on = (e) => { if (this.editing) return; e.preventDefault(); input[key] = true; el.classList.add('press'); if (navigator.vibrate && key === 'attack') navigator.vibrate(8); };
       const off = (e) => { e.preventDefault(); input[key] = false; el.classList.remove('press'); };
       el.addEventListener('touchstart', on, { passive: false }); el.addEventListener('touchend', off, { passive: false }); el.addEventListener('touchcancel', off);
       el.addEventListener('mousedown', on); el.addEventListener('mouseup', off); el.addEventListener('mouseleave', off);
     };
     const tap = (elId, key) => {
       const el = $(elId);
-      const on = (e) => { e.preventDefault(); input[key] = true; el.classList.add('press'); setTimeout(() => el.classList.remove('press'), 120); if (navigator.vibrate) navigator.vibrate(12); };
+      const on = (e) => { if (this.editing) return; e.preventDefault(); input[key] = true; el.classList.add('press'); setTimeout(() => el.classList.remove('press'), 120); if (navigator.vibrate) navigator.vibrate(12); };
       el.addEventListener('touchstart', on, { passive: false }); el.addEventListener('mousedown', on);
     };
     hold('bAttack', 'attack'); tap('bDash', 'dash'); tap('bNova', 'nova'); tap('bPotion', 'potion');

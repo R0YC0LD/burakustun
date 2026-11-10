@@ -15,6 +15,7 @@ Mobil için izometrik 3D keşif / roguelike RPG. Tamamen prosedürel: zindanlar,
 - **Grafik:** PBR malzemeler, prosedürel normal/pürüzlülük haritaları, dinamik yumuşak gölgeler, meşale gölgeleri, GTAO ortam kapatma (Ultra), HDR bloom, ACES ton eşleme, animasyonlu sıvılar (lav, zehir, buz), duvar kesme (cutaway) shader'ı
 - **Ses:** WebAudio ile gerçek zamanlı sentez — konvolüsyon yankısı, kompresör, biyoma özel üretken müzik ve ortam sesleri
 - **Optimizasyon:** parçalara bölünmüş (chunk) zindan geometrisi ve görüş dışı ayıklama, pişirilmiş ortam gölgesi, uzak düşmanları uyutma, nesne havuzları, sabit ışık havuzu (shader yeniden derleme yok), dinamik çözünürlük ölçekleme, cihaz bazlı otomatik kalite
+- **Erişilebilirlik:** 3 zorluk seviyesi, otomatik saldırı, otomatik iksir, sabit joystick, tuş boyutu/saydamlığı ve sürükle-bırak tuş yerleşim düzenleyicisi
 - Ana menü, ayarlar (kalite, müzik/efekt sesi, sarsıntı, FPS), duraklatma, Android geri tuşu desteği
 
 > Not: Mobil WebView'da donanımsal ışın izleme (RT çekirdekleri) API'si yoktur; "Ultra RT" modu bu görünümü gerçek zamanlı gölgeler, ortam kapatma, PBR yansımalar ve bloom ile taklit eder.

@@ -201,3 +201,35 @@ input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:16px;heigh
   .pn{font-size:14px}.pd{font-size:12px}
   .perkWrap h2{font-size:21px}
 }
+
+/* settings additions */
+.row label{display:flex;flex-direction:column;gap:1px}
+.row label .sub{font-size:10px;color:#8a8070;line-height:1.25}
+.sbtn{padding:6px 14px;font-family:'New Rocker',Georgia,serif;font-size:12px;letter-spacing:.08em;color:#e8dcc4;border:1px solid var(--line);border-radius:5px;background:linear-gradient(180deg,rgba(48,38,32,.95),rgba(20,16,16,.95))}
+.sbtn.gold{color:#1a0e04;background:linear-gradient(180deg,#ffe2a0,#d89a3a 55%,#9a6020);border-color:#ffd88a}
+.sbtn:active{transform:scale(.95)}
+/* user-adjustable controls */
+.actions{scale:var(--btnScale,1);transform-origin:bottom right;opacity:var(--btnOpacity,.9)}
+.ab.custom{position:fixed;right:auto!important;bottom:auto!important;opacity:var(--btnOpacity,.9)}
+.actions.customized{scale:none;opacity:1}
+#stick.fixed{opacity:.55}
+#stick.fixed.active{opacity:1}
+/* layout editor */
+#editor{position:fixed;inset:0;z-index:40;pointer-events:none;background:rgba(0,0,0,.35)}
+.edBar{position:absolute;left:50%;top:calc(8px + var(--safe-t));transform:translateX(-50%);pointer-events:auto;display:flex;flex-direction:column;gap:6px;align-items:center;padding:8px 14px;border-radius:8px;background:rgba(14,11,13,.94);border:1px solid var(--line);box-shadow:0 8px 30px rgba(0,0,0,.6);min-width:250px}
+.edTitle{font-family:'New Rocker',Georgia,serif;font-size:14px;color:var(--gold);letter-spacing:.06em}
+.edRow{display:flex;align-items:center;gap:10px;width:100%;font-size:12px;color:#cfc4b0}
+.edRow span{flex:1;white-space:nowrap}
+.edRow input{width:130px}
+.edBtns{display:flex;gap:8px}
+body.editing #hud{z-index:41}
+body.editing #hud>*:not(.actions):not(#stick){visibility:hidden}
+body.editing .ab{outline:1px dashed rgba(255,220,150,.6);outline-offset:3px;transition:none}
+body.editing .ab.sel{outline:2px solid #ffe2a0;box-shadow:0 0 18px rgba(255,200,100,.7)}
+body.editing #stick{opacity:1!important;pointer-events:auto!important;outline:1px dashed rgba(255,220,150,.6);outline-offset:3px}
+body.editing #stick.sel{outline:2px solid #ffe2a0}
+
+/* let long panels scroll by touch while the game surface ignores browser gestures */
+html,body{touch-action:pan-y}
+#c,#hud,#hud *,#editor,#menu,#dmg{touch-action:none}
+.card{touch-action:pan-y;-webkit-overflow-scrolling:touch;overscroll-behavior:contain}

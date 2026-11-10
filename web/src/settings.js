@@ -8,6 +8,14 @@ const defaults = {
   shake: true,
   fps: false,
   lang: 'tr',
+  difficulty: 'easy',   // easy | normal | hard
+  autoAttack: true,     // swing automatically when an enemy is in reach
+  autoPotion: true,     // drink a potion automatically at low health
+  fixedStick: false,    // joystick stays in one place instead of appearing under the thumb
+  btnScale: 1,          // global size of the action buttons
+  btnOpacity: 0.9,
+  layout: null,         // custom per-button placement: { id: { x, y, s } } in viewport fractions
+  stickPos: null,       // { x, y } viewport fractions for the fixed joystick
 };
 
 function load(key, def) {
@@ -46,6 +54,12 @@ export function detectQuality() {
   } catch (e) { tier = 'medium'; }
   return tier;
 }
+
+export const DIFFICULTY = {
+  easy:   { hp: 0.7,  dmg: 0.55, potions: 3, label: 'Kolay' },
+  normal: { hp: 1.0,  dmg: 1.0,  potions: 2, label: 'Normal' },
+  hard:   { hp: 1.35, dmg: 1.45, potions: 1, label: 'Zor' },
+};
 
 export const QUALITY = {
   low:    { pixelRatio: 0.75, shadows: false, shadowSize: 512,  bloom: false, ao: false, texSize: 256, torchShadow: false, lights: 4, particles: 0.5 },

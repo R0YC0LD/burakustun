@@ -32,7 +32,7 @@
     </div>
     <div id="menuStats" class="mstats"></div>
   </div>
-  <div class="ver">v1.1</div>
+  <div class="ver">v1.2</div>
 </div>
 
 <!-- SETTINGS -->
@@ -50,6 +50,21 @@
       </div>
       <small>Ultra RT: Gerçek zamanlı yumuşak gölgeler, ortam kapatma (GTAO), bloom, PBR yansımalar. Güçlü cihazlar için.</small>
     </div>
+    <div class="row col">
+      <label>Zorluk</label>
+      <div class="seg">
+        <button data-d="easy">Kolay</button>
+        <button data-d="normal">Normal</button>
+        <button data-d="hard">Zor</button>
+      </div>
+      <small>Düşman canını ve hasarını değiştirir. Yeni oyunda (ve yeni katta) geçerli olur.</small>
+    </div>
+    <div class="row"><label>Otomatik saldırı<small class="sub">Düşman menzile girince kendiliğinden vurur</small></label><input id="chkAuto" type="checkbox" class="tog"></div>
+    <div class="row"><label>Otomatik iksir<small class="sub">Can %25'in altına düşünce içer</small></label><input id="chkPotion" type="checkbox" class="tog"></div>
+    <div class="row"><label>Sabit joystick<small class="sub">Joystick hep aynı yerde durur</small></label><input id="chkStick" type="checkbox" class="tog"></div>
+    <div class="row"><label>Tuş boyutu</label><input id="rngBtn" type="range" min="0.7" max="1.6" step="0.05"></div>
+    <div class="row"><label>Tuş saydamlığı</label><input id="rngOpa" type="range" min="0.3" max="1" step="0.05"></div>
+    <div class="row"><label>Tuş yerleşimi<small class="sub">Her tuşu sürükle, ayrı ayrı boyutlandır</small></label><button id="btnLayout" class="sbtn">DÜZENLE</button></div>
     <div class="row"><label>Müzik</label><input id="volMusic" type="range" min="0" max="1" step="0.05"></div>
     <div class="row"><label>Efektler</label><input id="volSfx" type="range" min="0" max="1" step="0.05"></div>
     <div class="row"><label>Ekran sarsıntısı</label><input id="chkShake" type="checkbox" class="tog"></div>
@@ -141,6 +156,14 @@
   </div>
 </div>
 
+<!-- CONTROL LAYOUT EDITOR -->
+<div id="editor" class="hidden">
+  <div class="edBar">
+    <div class="edTitle">Tuşları sürükleyerek yerleştir</div>
+    <div class="edRow"><span id="edSel">Bir tuşa dokun</span><input id="edSize" type="range" min="0.6" max="2" step="0.05" value="1"></div>
+    <div class="edBtns"><button id="edReset" class="sbtn">SIFIRLA</button><button id="edDone" class="sbtn gold">KAYDET</button></div>
+  </div>
+</div>
 <div id="fade"></div>
 <script src="game.js"></script>
 </body>
