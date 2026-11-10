@@ -3,6 +3,7 @@ import * as THREE from 'three';
 import { settings, saveSettings, meta } from './settings.js';
 import { sfx, applyVolumes } from './audio.js';
 import { TILE, FLOOR, LIQUID } from './dungeon.js';
+import { mountIcons, perkIcon, icon } from './icons.js';
 
 const $ = (id) => document.getElementById(id);
 const tmp = new THREE.Vector3();
@@ -11,6 +12,7 @@ export const input = { mx: 0, my: 0, attack: false, dash: false, nova: false, po
 
 export class UI {
   constructor() {
+    mountIcons();
     this.dmgPool = [];
     this.dmgLayer = $('dmg');
     for (let i = 0; i < 40; i++) {
@@ -228,7 +230,7 @@ export class UI {
     opts.forEach((p, i) => {
       const el = document.createElement('button');
       el.className = 'perk'; el.style.animationDelay = (i * 0.08) + 's';
-      el.innerHTML = `<div class="pi">${p.icon}</div><div class="pn">${p.name}</div><div class="pd">${p.desc}</div>`;
+      el.innerHTML = `<div class="pi">${perkIcon(p.id)}</div><div class="pt"><div class="pn">${p.name}</div><div class="pd">${p.desc}</div></div>`;
       el.addEventListener('click', (e) => { e.preventDefault(); $('perks').classList.add('hidden'); this.paused = false; cb(p); });
       box.appendChild(el);
     });
@@ -238,7 +240,7 @@ export class UI {
   }
 
   gameOver(s) {
-    $('overStats').innerHTML = statsHtml(s) + (s.best ? '<div class="best">★ YENİ REKOR ★</div>' : '');
+    $('overStats').innerHTML = statsHtml(s) + (s.best ? `<div class="best">${icon('star')} YENİ REKOR ${icon('star')}</div>` : '');
     this.show('over');
   }
   victory(s) { $('vicStats').innerHTML = statsHtml(s); this.show('victory'); }

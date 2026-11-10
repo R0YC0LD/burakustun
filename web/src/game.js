@@ -40,21 +40,21 @@ const BOSS_DEFS = {
 };
 
 export const PERKS = [
-  { id: 'hp', name: 'Titan Kalbi', desc: '+25 Maks. Can ve tamamen iyileş', icon: '❤', apply: (p) => { p.maxHp += 25; p.hp = p.maxHp; } },
-  { id: 'dmg', name: 'Keskin Çelik', desc: '+20% hasar', icon: '⚔', apply: (p) => { p.dmg *= 1.2; } },
-  { id: 'as', name: 'Kılıç Dansı', desc: '+18% saldırı hızı', icon: '🌀', apply: (p) => { p.attackCd *= 0.82; } },
-  { id: 'spd', name: 'Rüzgâr Adımı', desc: '+12% hareket hızı', icon: '👢', apply: (p) => { p.speed *= 1.12; } },
-  { id: 'crit', name: 'Ölümcül Nişan', desc: '+10% kritik şansı', icon: '🎯', apply: (p) => { p.crit += 0.1; } },
-  { id: 'critd', name: 'Cellat', desc: '+50% kritik hasarı', icon: '💀', apply: (p) => { p.critMult += 0.5; } },
-  { id: 'ls', name: 'Vampir Çeliği', desc: 'Hasarın %6\'sı kadar can çal', icon: '🩸', apply: (p) => { p.lifesteal += 0.06; } },
-  { id: 'regen', name: 'Troll Kanı', desc: 'Saniyede +1.5 can yenile', icon: '🌿', apply: (p) => { p.regen += 1.5; } },
-  { id: 'armor', name: 'Ejder Pulu', desc: 'Alınan hasar -12%', icon: '🛡', apply: (p) => { p.armor = 1 - (1 - p.armor) * 0.88; } },
-  { id: 'dash', name: 'Gölge Adımı', desc: 'Atılma bekleme süresi -30%', icon: '💨', apply: (p) => { p.dashCd *= 0.7; } },
-  { id: 'nova', name: 'Kor Halkası', desc: 'Nova hasarı +50%, bekleme -15%', icon: '🔥', apply: (p) => { p.novaDmg *= 1.5; p.novaCd *= 0.85; } },
-  { id: 'reach', name: 'Uzun Kılıç', desc: '+20% saldırı menzili', icon: '🗡', apply: (p) => { p.reach *= 1.2; } },
-  { id: 'thorns', name: 'Diken Zırh', desc: 'Yakın saldırganlara 15 hasar yansıt', icon: '🌵', apply: (p) => { p.thorns += 15; } },
-  { id: 'potion', name: 'Simyacı', desc: '+2 iksir, iksirler %50 daha güçlü', icon: '⚗', apply: (p) => { p.potions = Math.min(p.potions + 2, 9); p.potionPow *= 1.5; } },
-  { id: 'magnet', name: 'Açgözlülük', desc: '+40% altın, mıknatıs menzili x2', icon: '💰', apply: (p) => { p.goldMult += 0.4; p.magnet *= 2; } },
+  { id: 'hp', name: 'Titan Kalbi', desc: '+25 Maks. Can ve tamamen iyileş', apply: (p) => { p.maxHp += 25; p.hp = p.maxHp; } },
+  { id: 'dmg', name: 'Keskin Çelik', desc: '+20% hasar', apply: (p) => { p.dmg *= 1.2; } },
+  { id: 'as', name: 'Kılıç Dansı', desc: '+18% saldırı hızı', apply: (p) => { p.attackCd *= 0.82; } },
+  { id: 'spd', name: 'Rüzgâr Adımı', desc: '+12% hareket hızı', apply: (p) => { p.speed *= 1.12; } },
+  { id: 'crit', name: 'Ölümcül Nişan', desc: '+10% kritik şansı', apply: (p) => { p.crit += 0.1; } },
+  { id: 'critd', name: 'Cellat', desc: '+50% kritik hasarı', apply: (p) => { p.critMult += 0.5; } },
+  { id: 'ls', name: 'Vampir Çeliği', desc: 'Hasarın %6\'sı kadar can çal', apply: (p) => { p.lifesteal += 0.06; } },
+  { id: 'regen', name: 'Troll Kanı', desc: 'Saniyede +1.5 can yenile', apply: (p) => { p.regen += 1.5; } },
+  { id: 'armor', name: 'Ejder Pulu', desc: 'Alınan hasar -12%', apply: (p) => { p.armor = 1 - (1 - p.armor) * 0.88; } },
+  { id: 'dash', name: 'Gölge Adımı', desc: 'Atılma bekleme süresi -30%', apply: (p) => { p.dashCd *= 0.7; } },
+  { id: 'nova', name: 'Kor Halkası', desc: 'Nova hasarı +50%, bekleme -15%', apply: (p) => { p.novaDmg *= 1.5; p.novaCd *= 0.85; } },
+  { id: 'reach', name: 'Uzun Kılıç', desc: '+20% saldırı menzili', apply: (p) => { p.reach *= 1.2; } },
+  { id: 'thorns', name: 'Diken Zırh', desc: 'Yakın saldırganlara 15 hasar yansıt', apply: (p) => { p.thorns += 15; } },
+  { id: 'potion', name: 'Simyacı', desc: '+2 iksir, iksirler %50 daha güçlü', apply: (p) => { p.potions = Math.min(p.potions + 2, 9); p.potionPow *= 1.5; } },
+  { id: 'magnet', name: 'Açgözlülük', desc: '+40% altın, mıknatıs menzili x2', apply: (p) => { p.goldMult += 0.4; p.magnet *= 2; } },
 ];
 
 const tmpV = new THREE.Vector3();

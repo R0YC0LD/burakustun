@@ -26,9 +26,9 @@
       <div class="logoSub">İzometrik Roguelike Keşif RPG</div>
     </div>
     <div class="mbtns">
-      <button id="btnPlay" class="mbtn primary">⚔ MACERAYA BAŞLA</button>
-      <button id="btnHow" class="mbtn">📜 NASIL OYNANIR</button>
-      <button id="btnSettings" class="mbtn">⚙ AYARLAR</button>
+      <button id="btnPlay" class="mbtn primary"><i data-ic="swords"></i>MACERAYA BAŞLA</button>
+      <button id="btnHow" class="mbtn"><i data-ic="scroll"></i>NASIL OYNANIR</button>
+      <button id="btnSettings" class="mbtn"><i data-ic="gear"></i>AYARLAR</button>
     </div>
     <div id="menuStats" class="mstats"></div>
   </div>
@@ -54,7 +54,7 @@
     <div class="row"><label>Efektler</label><input id="volSfx" type="range" min="0" max="1" step="0.05"></div>
     <div class="row"><label>Ekran sarsıntısı</label><input id="chkShake" type="checkbox" class="tog"></div>
     <div class="row"><label>FPS göstergesi</label><input id="chkFps" type="checkbox" class="tog"></div>
-    <button id="btnSetBack" class="mbtn">← GERİ</button>
+    <button id="btnSetBack" class="mbtn"><i data-ic="back"></i>GERİ</button>
   </div>
 </div>
 
@@ -63,17 +63,17 @@
   <div class="card">
     <h2>Nasıl Oynanır</h2>
     <ul class="how">
-      <li><b>Sol taraf:</b> Ekranın soluna dokunup sürükle → hareket joystick'i.</li>
-      <li><b>⚔ Saldırı:</b> Basılı tut, en yakın düşmana otomatik nişan alır.</li>
-      <li><b>💨 Atılma:</b> Kısa süre hasar almazsın — saldırılardan kaç!</li>
-      <li><b>🔥 Kor Novası:</b> Etraftaki herkese alan hasarı, mermileri siler.</li>
-      <li><b>⚗ İksir:</b> Canının %40'ını yeniler.</li>
-      <li>Kırmızı halkalar ve titreyen düşmanlar <b>saldırı uyarısıdır</b>.</li>
-      <li>Seviye atladıkça <b>3 güçten birini seç</b>. Sandıkları aç, altın topla.</li>
-      <li>Her biyomun 2. katında bir <b>BOSS</b> portalı korur. 5 biyom, 10 kat.</li>
-      <li>Öldüğünde her şey sıfırlanır. Bu bir roguelike!</li>
+      <li><i data-ic="stick"></i><span><b>Hareket:</b> Ekranın soluna dokunup sürükle; hareket joystick'i.</span></li>
+      <li><i data-ic="sword"></i><span><b>Saldırı:</b> Basılı tut, en yakın düşmana otomatik nişan alır.</span></li>
+      <li><i data-ic="dash"></i><span><b>Atılma:</b> Kısa süre hasar almazsın — saldırılardan kaç!</span></li>
+      <li><i data-ic="nova"></i><span><b>Kor Novası:</b> Etraftaki herkese alan hasarı, mermileri siler.</span></li>
+      <li><i data-ic="potion"></i><span><b>İksir:</b> Canının %40'ını yeniler.</span></li>
+      <li><i data-ic="warn"></i><span>Kırmızı halkalar ve titreyen düşmanlar <b>saldırı uyarısıdır</b>.</span></li>
+      <li><i data-ic="levelup"></i><span>Seviye atladıkça <b>3 güçten birini seç</b>. Sandıkları aç, altın topla.</span></li>
+      <li><i data-ic="boss"></i><span>Her biyomun 2. katında bir <b>BOSS</b> portalı korur. 5 biyom, 10 kat.</span></li>
+      <li><i data-ic="p_critd"></i><span>Öldüğünde her şey sıfırlanır. Bu bir roguelike!</span></li>
     </ul>
-    <button id="btnHowBack" class="mbtn">← GERİ</button>
+    <button id="btnHowBack" class="mbtn"><i data-ic="back"></i>GERİ</button>
   </div>
 </div>
 
@@ -82,21 +82,21 @@
   <div class="topL">
     <div class="lvlRow"><div class="lvlBadge"><span id="lvl">1</span></div>
       <div class="bars">
-        <div id="hpBar" class="bar hp"><i id="hpFill"></i><span id="hpText"></span></div>
+        <div id="hpBar" class="bar hp"><i id="hpFill"></i></div>
         <div class="bar xp"><i id="xpFill"></i></div>
       </div>
     </div>
-    <div class="info"><span class="g">◆ <b id="gold">0</b></span><span id="floorLbl"></span></div>
+    <div class="info"><span class="g"><i data-ic="gem"></i><b id="gold">0</b></span><span id="floorLbl"></span><span id="hpText"></span></div>
   </div>
   <canvas id="minimap" width="150" height="150"></canvas>
-  <button id="btnPause" class="pauseBtn">❚❚</button>
+  <button id="btnPause" class="pauseBtn"><i data-ic="pause"></i></button>
   <div id="stickZone"></div>
   <div id="stick"><div id="knob"></div></div>
   <div class="actions">
-    <button id="bPotion" class="ab small"><span>⚗</span><em id="potCount">2</em></button>
-    <button id="bNova" class="ab mid"><span>🔥</span></button>
-    <button id="bDash" class="ab mid"><span>💨</span></button>
-    <button id="bAttack" class="ab big"><span>⚔</span></button>
+    <button id="bPotion" class="ab small"><span><i data-ic="potion"></i></span><em id="potCount">2</em></button>
+    <button id="bNova" class="ab mid"><span><i data-ic="nova"></i></span></button>
+    <button id="bDash" class="ab mid"><span><i data-ic="dash"></i></span></button>
+    <button id="bAttack" class="ab big"><span><i data-ic="sword"></i></span></button>
   </div>
   <div id="boss" class="hidden"><div id="bossName"></div><div class="bbar"><i id="bossFill"></i></div></div>
 </div>
@@ -109,9 +109,9 @@
 <div id="pause" class="screen panel hidden">
   <div class="card narrow">
     <h2>Duraklatıldı</h2>
-    <button id="btnResume" class="mbtn primary">▶ DEVAM ET</button>
-    <button id="btnPauseSettings" class="mbtn">⚙ AYARLAR</button>
-    <button id="btnQuit" class="mbtn danger">⌂ ANA MENÜ</button>
+    <button id="btnResume" class="mbtn primary"><i data-ic="play"></i>DEVAM ET</button>
+    <button id="btnPauseSettings" class="mbtn"><i data-ic="gear"></i>AYARLAR</button>
+    <button id="btnQuit" class="mbtn danger"><i data-ic="home"></i>ANA MENÜ</button>
   </div>
 </div>
 
@@ -125,8 +125,8 @@
   <div class="card">
     <h2 class="dead">ÖLDÜN</h2>
     <div id="overStats"></div>
-    <button id="btnRetry" class="mbtn primary">↻ TEKRAR DENE</button>
-    <button id="btnOverMenu" class="mbtn">⌂ ANA MENÜ</button>
+    <button id="btnRetry" class="mbtn primary"><i data-ic="retry"></i>TEKRAR DENE</button>
+    <button id="btnOverMenu" class="mbtn"><i data-ic="home"></i>ANA MENÜ</button>
   </div>
 </div>
 
@@ -136,8 +136,8 @@
     <h2 class="win">ZAFER!</h2>
     <p class="center">Boşluğun Gözcüsü düştü. Derinlikler artık senin.</p>
     <div id="vicStats"></div>
-    <button id="btnEndless" class="mbtn primary">∞ SONSUZ MODA DEVAM</button>
-    <button id="btnVicMenu" class="mbtn">⌂ ANA MENÜ</button>
+    <button id="btnEndless" class="mbtn primary"><i data-ic="infinity"></i>SONSUZ MODA DEVAM</button>
+    <button id="btnVicMenu" class="mbtn"><i data-ic="home"></i>ANA MENÜ</button>
   </div>
 </div>
 
